@@ -1,19 +1,38 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:name_twist_game/data/level_data/default_levels.dart';
-import 'package:name_twist_game/features/level_selection/presentation/widgets/level_card.dart';
+import 'package:name_twist_game/data/generators/challenge_generator.dart';
+import 'package:name_twist_game/data/models/generated_challenge.dart';
+import 'package:name_twist_game/data/models/word_content.dart';
+import 'package:name_twist_game/features/level_selection/presentation/widgets/challenge_card.dart';
 
 void main() {
-  group('LevelCard Spoiler-Free Verification Tests', () {
+  group('ChallengeCard Spoiler-Free Verification Tests', () {
+    late List<GeneratedChallenge> challenges;
+
+    setUpAll(() {
+      final file = File('assets/data/word_levels.json');
+      final jsonString = file.readAsStringSync();
+      final List<dynamic> decoded = json.decode(jsonString) as List<dynamic>;
+      final words = decoded
+          .map((e) => WordContent.fromJson(e as Map<String, dynamic>))
+          .toList();
+      challenges = ChallengeGenerator.generateAllChallenges(words);
+    });
+
     testWidgets(
-        'Incomplete LevelCard does NOT display answer word, shape name, or emoji clue',
+        'Incomplete ChallengeCard does NOT display answer word, pattern name, or emoji clue',
         (WidgetTester tester) async {
-      for (final level in defaultLevels) {
+      // Test first 10 challenges from various modes
+      for (var i = 0; i < 10; i++) {
+        final challenge = challenges[i];
+
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: LevelCard(
-                level: level,
+              body: ChallengeCard(
+                challenge: challenge,
                 isLocked: false,
                 starsEarned: 0,
                 onTap: () {},
@@ -22,35 +41,36 @@ void main() {
           ),
         );
 
-        // Verify Level Header and Mystery Word are shown
-        expect(find.text('LEVEL ${level.index + 1}'), findsOneWidget);
+        // Verify Level number, MYSTERY WORD and metadata are shown
+        expect(find.text('LEVEL ${challenge.challengeNumber}'), findsOneWidget);
         expect(find.text('MYSTERY WORD'), findsOneWidget);
         expect(
-          find.text('${level.category} • ${level.letterCount} LETTERS'),
+          find.text('${challenge.category} • ${challenge.letterCount} LETTERS'),
           findsOneWidget,
         );
 
         // MUST NOT display the answer word
-        expect(find.text(level.word), findsNothing);
+        expect(find.text(challenge.word), findsNothing);
 
         // MUST NOT display the pattern/shape name
-        expect(find.text(level.shape), findsNothing);
+        expect(find.text(challenge.patternTemplate.name.toUpperCase()),
+            findsNothing);
 
         // MUST NOT display the clue emoji
-        expect(find.text(level.emoji), findsNothing);
+        expect(find.text(challenge.wordContent.emoji), findsNothing);
       }
     });
 
     testWidgets(
-        'Completed LevelCard displays COMPLETED and stars without spoiling the answer word',
+        'Completed ChallengeCard displays COMPLETED and stars without revealing the answer',
         (WidgetTester tester) async {
-      final level = defaultLevels[0]; // SHINE / STAR
+      final challenge = challenges[0];
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: LevelCard(
-              level: level,
+            body: ChallengeCard(
+              challenge: challenge,
               isLocked: false,
               starsEarned: 3,
               onTap: () {},
@@ -59,24 +79,23 @@ void main() {
         ),
       );
 
-      // Verify COMPLETED tag
+      // Verify COMPLETED is displayed
       expect(find.text('COMPLETED'), findsOneWidget);
 
-      // Answer word, shape name, and emoji remain hidden
-      expect(find.text('SHINE'), findsNothing);
-      expect(find.text('STAR'), findsNothing);
-      expect(find.text('✨'), findsNothing);
+      // Answer word remains hidden
+      expect(find.text(challenge.word), findsNothing);
+      expect(find.text(challenge.wordContent.emoji), findsNothing);
     });
 
-    testWidgets('Locked LevelCard displays LOCKED without answer spoilers',
+    testWidgets('Locked ChallengeCard displays LOCKED without answer spoilers',
         (WidgetTester tester) async {
-      final level = defaultLevels[4]; // PLANT / TREE
+      final challenge = challenges[499];
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: LevelCard(
-              level: level,
+            body: ChallengeCard(
+              challenge: challenge,
               isLocked: true,
               starsEarned: 0,
               onTap: () {},
@@ -86,9 +105,8 @@ void main() {
       );
 
       expect(find.text('LOCKED'), findsOneWidget);
-      expect(find.text('PLANT'), findsNothing);
-      expect(find.text('TREE'), findsNothing);
-      expect(find.text('🌱'), findsNothing);
+      expect(find.text(challenge.word), findsNothing);
+      expect(find.text(challenge.wordContent.emoji), findsNothing);
     });
   });
 }

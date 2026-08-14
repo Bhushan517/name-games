@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'app/app.dart';
 import 'app/routes/app_router.dart';
 import 'core/services/local_storage_service.dart';
-import 'data/repositories/level_repository.dart';
+import 'data/repositories/challenge_repository.dart';
+import 'data/repositories/word_repository.dart';
+import 'data/sources/local_word_data_source.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,10 +16,20 @@ Future<void> main() async {
   ]);
 
   final storageService = await LocalStorageService.init();
-  final levelRepository = LevelRepository(storageService);
+  final wordDataSource = LocalWordDataSource();
+  final wordRepository = WordRepository(wordDataSource);
+  final challengeRepository = ChallengeRepository(
+    wordRepository: wordRepository,
+    storageService: storageService,
+  );
+
+  // Pre-cache challenges asynchronously on app start
+  challengeRepository.getChallenges();
+
   final appRouter = AppRouter(
     storageService: storageService,
-    levelRepository: levelRepository,
+    wordRepository: wordRepository,
+    challengeRepository: challengeRepository,
   );
 
   runApp(

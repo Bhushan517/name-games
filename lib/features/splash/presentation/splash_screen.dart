@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../app/routes/route_names.dart';
 import '../../../core/constants/app_colors.dart';
@@ -25,6 +26,8 @@ class _SplashScreenState extends State<SplashScreen>
     duration: const Duration(milliseconds: 1100),
   )..forward();
 
+  Timer? _navTimer;
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen>
     final isFirst = widget.storageService.isFirstLaunch();
     final delayMs = isFirst ? 2700 : 1400;
 
-    Future.delayed(Duration(milliseconds: delayMs), () {
+    _navTimer = Timer(Duration(milliseconds: delayMs), () {
       if (!mounted) return;
       final targetRoute = isFirst ? RouteNames.onboarding : RouteNames.home;
       Navigator.pushReplacementNamed(context, targetRoute);
@@ -44,6 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _navTimer?.cancel();
     _spinController.dispose();
     _enterController.dispose();
     super.dispose();

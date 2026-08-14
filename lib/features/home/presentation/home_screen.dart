@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../app/routes/route_names.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/local_storage_service.dart';
 import '../../../shared/widgets/space_background.dart';
@@ -25,7 +24,8 @@ class _HomeScreenState extends State<HomeScreen>
   )..repeat(reverse: true);
 
   int _totalEarnedStars = 0;
-  int _unlockedLevels = 1;
+  int _unlockedChallenges = 1;
+  int _unlockedWords = 0;
 
   @override
   void initState() {
@@ -34,9 +34,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _refreshStats() {
+    final progress = widget.storageService.loadPlayerProgress();
     setState(() {
-      _totalEarnedStars = widget.storageService.getTotalStars();
-      _unlockedLevels = widget.storageService.getUnlockedLevel();
+      _totalEarnedStars = progress.totalStars;
+      _unlockedChallenges = progress.unlockedChallengeNumber;
+      _unlockedWords = progress.unlockedWordCount;
     });
   }
 
@@ -51,14 +53,15 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: SpaceBackground(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Column(
             children: [
+              // Top Bar
               Row(
                 children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.cyan.withValues(alpha: 0.12),
@@ -96,6 +99,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
+
+              // Main Body
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
@@ -103,7 +108,9 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
+
+                        // Floating Magic Badge
                         AnimatedBuilder(
                           animation: _floatController,
                           builder: (_, child) => Transform.translate(
@@ -114,8 +121,8 @@ class _HomeScreenState extends State<HomeScreen>
                             alignment: Alignment.center,
                             children: [
                               Container(
-                                width: 200,
-                                height: 200,
+                                width: 170,
+                                height: 170,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: RadialGradient(
@@ -128,44 +135,49 @@ class _HomeScreenState extends State<HomeScreen>
                                     BoxShadow(
                                       color:
                                           AppColors.cyan.withValues(alpha: 0.2),
-                                      blurRadius: 70,
+                                      blurRadius: 60,
                                     ),
                                   ],
                                 ),
                               ),
                               const Text(
                                 '✨',
-                                style: TextStyle(fontSize: 110),
+                                style: TextStyle(fontSize: 92),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+
+                        const SizedBox(height: 12),
                         const Text(
                           AppStrings.heroTitle,
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 21,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.2,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
-                          AppStrings.heroSubtitle,
+                          '500 Challenges • 100 Words • 5 Game Modes',
                           style: TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: 14,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 24),
+
+                        const SizedBox(height: 18),
+
+                        // Live Stats Row
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
+                            horizontal: 16,
+                            vertical: 14,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.055),
-                            borderRadius: BorderRadius.circular(22),
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: AppColors.borderSubtle),
                           ),
                           child: Row(
@@ -173,30 +185,31 @@ class _HomeScreenState extends State<HomeScreen>
                             children: [
                               StatBadge(
                                 icon: Icons.flag_rounded,
-                                value:
-                                    '$_unlockedLevels/${AppConstants.totalLevels}',
+                                value: '$_unlockedChallenges/500',
                                 label: 'LEVELS',
                               ),
-                              const SizedBox(width: 24),
-                              const StatBadge(
-                                icon: Icons.favorite_rounded,
-                                value: '${AppConstants.maxLives}',
-                                label: 'LIVES',
+                              const SizedBox(width: 18),
+                              StatBadge(
+                                icon: Icons.menu_book_rounded,
+                                value: '$_unlockedWords/100',
+                                label: 'WORDS',
                               ),
-                              const SizedBox(width: 24),
+                              const SizedBox(width: 18),
                               StatBadge(
                                 icon: Icons.star_rounded,
-                                value:
-                                    '$_totalEarnedStars/${AppConstants.totalStars}',
+                                value: '$_totalEarnedStars',
                                 label: 'STARS',
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 26),
+
+                        const SizedBox(height: 20),
+
+                        // PLAY NOW Button
                         SizedBox(
                           width: double.infinity,
-                          height: 58,
+                          height: 56,
                           child: FilledButton.icon(
                             onPressed: () async {
                               await Navigator.pushNamed(
@@ -209,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen>
                             },
                             icon: const Icon(
                               Icons.play_arrow_rounded,
-                              size: 30,
+                              size: 28,
                             ),
                             label: const Text(
                               AppStrings.playNow,
@@ -220,7 +233,85 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 12),
+
+                        // Secondary Options: Daily Quest & Word Collection
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  await Navigator.pushNamed(
+                                    context,
+                                    RouteNames.dailyChallenge,
+                                  );
+                                  if (mounted) {
+                                    _refreshStats();
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  side: BorderSide(
+                                    color:
+                                        AppColors.gold.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.calendar_today_rounded,
+                                  color: AppColors.gold,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'DAILY QUEST',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.gold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  await Navigator.pushNamed(
+                                    context,
+                                    RouteNames.wordCollection,
+                                  );
+                                  if (mounted) {
+                                    _refreshStats();
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  side: BorderSide(
+                                    color:
+                                        AppColors.purple.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.menu_book_rounded,
+                                  color: AppColors.purple,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'MY WORDS',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.purple,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 8),
                       ],
                     ),
                   ),

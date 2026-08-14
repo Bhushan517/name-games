@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../data/models/word_level.dart';
+import '../../../../data/models/word_content.dart';
 
 class ClueCard extends StatelessWidget {
   const ClueCard({
@@ -12,7 +12,7 @@ class ClueCard extends StatelessWidget {
     required this.onHintTap,
   });
 
-  final WordLevel level;
+  final WordContent level;
   final bool hintUsed;
   final bool hasSelectedLetters;
   final VoidCallback onHintTap;
@@ -34,7 +34,7 @@ class ClueCard extends StatelessWidget {
             Text(level.emoji, style: const TextStyle(fontSize: 32)),
             const SizedBox(height: 2),
             Text(
-              level.clue,
+              level.sentenceClue,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
