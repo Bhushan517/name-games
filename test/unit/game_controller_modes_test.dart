@@ -19,10 +19,7 @@ void main() {
   late ChallengeRepository challengeRepository;
   late List<GeneratedChallenge> allChallenges;
 
-  setUpAll(() async {
-    SharedPreferences.setMockInitialValues({});
-    storageService = await LocalStorageService.init();
-
+  setUpAll(() {
     final file = File('assets/data/word_levels.json');
     final jsonString = file.readAsStringSync();
     final List<dynamic> decoded = json.decode(jsonString) as List<dynamic>;
@@ -31,6 +28,11 @@ void main() {
         .toList();
 
     allChallenges = ChallengeGenerator.generateAllChallenges(words);
+  });
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    storageService = await LocalStorageService.init();
     final wordRepo = WordRepository(LocalWordDataSource());
     challengeRepository = ChallengeRepository(
       wordRepository: wordRepo,

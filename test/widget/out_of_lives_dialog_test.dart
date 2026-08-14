@@ -21,10 +21,7 @@ void main() {
   late List<GeneratedChallenge> allChallenges;
   late ChallengeRepository challengeRepository;
 
-  setUpAll(() async {
-    SharedPreferences.setMockInitialValues({});
-    final storage = await LocalStorageService.init();
-
+  setUpAll(() {
     final file = File('assets/data/word_levels.json');
     final jsonString = file.readAsStringSync();
     final List<dynamic> decoded = json.decode(jsonString) as List<dynamic>;
@@ -33,6 +30,11 @@ void main() {
         .toList();
 
     allChallenges = ChallengeGenerator.generateAllChallenges(words);
+  });
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = await LocalStorageService.init();
     final wordRepo = WordRepository(LocalWordDataSource());
     challengeRepository = ChallengeRepository(
       wordRepository: wordRepo,
@@ -67,17 +69,29 @@ void main() {
 
       // Exhaust lives with guaranteed wrong choices
       for (var attempt = 0; attempt < initialLives; attempt++) {
-        final choiceButtons = find.descendant(
+        // Find choice buttons that are explicitly NOT in the target word (distractors)
+        final wrongChoice = find.descendant(
           of: find.byType(MissingLetterBoard),
-          matching: find.byType(InkWell),
+          matching: find.byWidgetPredicate((w) {
+            if (w is! InkWell) return false;
+            final textFinders = find.descendant(
+              of: find.byWidget(w),
+              matching: find.byType(Text),
+            );
+            if (textFinders.evaluate().isEmpty) return false;
+            final text = (textFinders.evaluate().first.widget as Text).data;
+            return text != null &&
+                text.isNotEmpty &&
+                !challenge.word.contains(text);
+          }),
         );
-        expect(choiceButtons, findsWidgets);
+        expect(wrongChoice, findsWidgets);
 
-        // Tap choice button to fill slot
+        // Tap wrong choice button to fill all missing slots
         for (var slot = 0;
             slot < challenge.difficultyConfig.missingLetterCount;
             slot++) {
-          await tester.tap(choiceButtons.last, warnIfMissed: false);
+          await tester.tap(wrongChoice.first, warnIfMissed: false);
           await tester.pump(const Duration(milliseconds: 20));
         }
 

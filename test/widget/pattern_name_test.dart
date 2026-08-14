@@ -11,6 +11,7 @@ import 'package:name_twist_game/data/repositories/challenge_repository.dart';
 import 'package:name_twist_game/data/repositories/word_repository.dart';
 import 'package:name_twist_game/data/sources/local_word_data_source.dart';
 import 'package:name_twist_game/features/game/presentation/game_screen.dart';
+import 'package:name_twist_game/features/game/presentation/widgets/animated_letter_node.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -19,10 +20,7 @@ void main() {
   late List<GeneratedChallenge> allChallenges;
   late ChallengeRepository challengeRepository;
 
-  setUpAll(() async {
-    SharedPreferences.setMockInitialValues({});
-    final storage = await LocalStorageService.init();
-
+  setUpAll(() {
     final file = File('assets/data/word_levels.json');
     final jsonString = file.readAsStringSync();
     final List<dynamic> decoded = json.decode(jsonString) as List<dynamic>;
@@ -31,6 +29,11 @@ void main() {
         .toList();
 
     allChallenges = ChallengeGenerator.generateAllChallenges(words);
+  });
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = await LocalStorageService.init();
     final wordRepo = WordRepository(LocalWordDataSource());
     challengeRepository = ChallengeRepository(
       wordRepository: wordRepo,
@@ -82,25 +85,26 @@ void main() {
       expect(find.text('MYSTERY PATTERN'), findsOneWidget);
       expect(find.text(patternName), findsNothing);
 
-      // Tap all letter nodes in target word sequence to complete
+      // Tap all letter nodes in target word sequence to complete, handling duplicates
       for (var i = 0; i < challenge.word.length; i++) {
         final char = challenge.word[i];
-        final letterFinder = find.widgetWithText(GestureDetector, char);
-        if (letterFinder.evaluate().isNotEmpty) {
-          await tester.tap(letterFinder.first);
-          await tester.pump(const Duration(milliseconds: 50));
-        }
+        final nodeFinder = find.byWidgetPredicate(
+          (w) => w is AnimatedLetterNode && w.letter == char && !w.isSelected,
+        );
+        expect(nodeFinder, findsWidgets);
+
+        await tester.tap(nodeFinder.first);
+        await tester.pump(const Duration(milliseconds: 50));
       }
 
-      // Tap CHECK WORD
-      final checkBtn = find.text('CHECK WORD');
-      if (checkBtn.evaluate().isNotEmpty) {
-        await tester.tap(checkBtn);
-        // Wait for the 650ms completion delay
-        await tester.pump(const Duration(milliseconds: 1000));
-        // Verify pattern name is now revealed in GameScreen / LevelCompleteDialog
-        expect(find.text(patternName), findsWidgets);
-      }
+      // Tap CHECK WORD unconditionally
+      expect(find.text('CHECK WORD'), findsOneWidget);
+      await tester.tap(find.text('CHECK WORD'));
+      // Wait for the 650ms completion delay
+      await tester.pump(const Duration(milliseconds: 1000));
+
+      // Verify pattern name is now revealed in GameScreen / LevelCompleteDialog
+      expect(find.text(patternName), findsWidgets);
     });
   });
 }

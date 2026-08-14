@@ -14,7 +14,7 @@ void main() {
 
   late ChallengeRepository repo;
 
-  setUpAll(() async {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final storage = await LocalStorageService.init();
     final wordRepo = WordRepository(LocalWordDataSource());
