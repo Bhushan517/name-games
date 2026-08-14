@@ -117,9 +117,21 @@ class LocalStorageService {
   Future<void> saveDailyChallengeResult({
     required String todayKey,
     required int starsEarned,
+    String? wordId,
   }) async {
     await _prefs.setString(keyDailyDate, todayKey);
     await _prefs.setInt(keyDailyStars, starsEarned);
+    if (wordId != null) {
+      final currentProgress = loadPlayerProgress();
+      final completedWords = Set<String>.from(currentProgress.completedWordIds);
+      if (!completedWords.contains(wordId)) {
+        completedWords.add(wordId);
+        await _prefs.setStringList(
+          keyCompletedWordIds,
+          completedWords.toList(),
+        );
+      }
+    }
   }
 
   int getUnlockedLevel() {

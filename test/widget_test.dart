@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:name_twist_game/core/services/local_storage_service.dart';
 import 'package:name_twist_game/data/generators/challenge_generator.dart';
+import 'package:name_twist_game/data/models/challenge_mode.dart';
 import 'package:name_twist_game/data/models/generated_challenge.dart';
 import 'package:name_twist_game/data/models/word_content.dart';
 import 'package:name_twist_game/data/repositories/challenge_repository.dart';
@@ -40,8 +41,11 @@ void main() {
         storageService: storage,
       );
 
-      // One challenge per mode (indices 0-4 cover modes 1-5)
-      final modeChallenges = testChallenges.take(5).toList();
+      // Guarantee exactly one challenge per mode — take(5) is fragile because
+      // the generator interleaves modes and indices 0-4 may not cover all 5.
+      final modeChallenges = ChallengeMode.values
+          .map((m) => testChallenges.firstWhere((c) => c.mode == m))
+          .toList();
 
       for (final challenge in modeChallenges) {
         await tester.pumpWidget(

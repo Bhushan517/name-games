@@ -86,11 +86,13 @@ class ChallengeRepository {
   Future<void> saveDailyChallengeCompletion({
     required DateTime date,
     required int starsEarned,
+    String? wordId,
   }) async {
     final todayKey = getTodayDateKey(date);
     await storageService.saveDailyChallengeResult(
       todayKey: todayKey,
       starsEarned: starsEarned,
+      wordId: wordId,
     );
   }
 }

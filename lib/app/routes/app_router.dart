@@ -10,6 +10,7 @@ import '../../features/level_selection/presentation/level_selection_screen.dart'
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/word_collection/presentation/word_collection_screen.dart';
+import 'game_screen_args.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -70,11 +71,17 @@ class AppRouter {
         );
 
       case RouteNames.game:
-        final challenge = settings.arguments as GeneratedChallenge;
+        // Accepts either GameScreenArgs (with isDailyMode flag) or a raw
+        // GeneratedChallenge for backwards compatibility.
+        final arg = settings.arguments;
+        final GameScreenArgs screenArgs = arg is GameScreenArgs
+            ? arg
+            : GameScreenArgs(challenge: arg as GeneratedChallenge);
         return MaterialPageRoute<int>(
           builder: (_) => GameScreen(
-            challenge: challenge,
+            challenge: screenArgs.challenge,
             repository: challengeRepository,
+            isDailyMode: screenArgs.isDailyMode,
           ),
         );
 

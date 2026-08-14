@@ -206,5 +206,35 @@ void main() {
       final state = await controller.validateSpelling();
       expect(state, GameValidationState.incomplete);
     });
+
+    testWidgets(
+        'Mode 5: Timed Challenge transitions to outOfLives state when timer exhausts all lives',
+        (WidgetTester tester) async {
+      final challenge =
+          allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
+      final controller = GameController(
+        challenge: challenge,
+        repository: challengeRepository,
+      );
+
+      expect(controller.mode, ChallengeMode.timed);
+      final initialLives = controller.lives;
+      final timerSecs = challenge.difficultyConfig.timerSeconds;
+
+      // Drain all lives through timeout cycles
+      for (var i = 0; i < initialLives; i++) {
+        await tester.pump(Duration(seconds: timerSecs + 1));
+      }
+
+      expect(controller.lives, 0);
+      expect(controller.validationState, GameValidationState.outOfLives);
+
+      // Verify resetLives restores state
+      controller.resetLives();
+      expect(controller.lives, challenge.difficultyConfig.lives);
+      expect(controller.validationState, GameValidationState.initial);
+
+      controller.dispose();
+    });
   });
 }

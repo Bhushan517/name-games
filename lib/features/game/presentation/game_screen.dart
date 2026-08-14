@@ -23,10 +23,14 @@ class GameScreen extends StatefulWidget {
     super.key,
     required this.challenge,
     required this.repository,
+    this.isDailyMode = false,
   });
 
   final GeneratedChallenge challenge;
   final ChallengeRepository repository;
+
+  /// When true, completing this level does NOT unlock or skip campaign levels.
+  final bool isDailyMode;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -47,6 +51,7 @@ class _GameScreenState extends State<GameScreen>
     _controller = GameController(
       challenge: widget.challenge,
       repository: widget.repository,
+      isDailyMode: widget.isDailyMode,
     );
   }
 
@@ -65,6 +70,37 @@ class _GameScreenState extends State<GameScreen>
     _shakeController.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _showOutOfLivesDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        title: const Text(
+          AppStrings.outOfLives,
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: const Text(AppStrings.outOfLivesMessage),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context); // Back to level selection / daily screen
+            },
+            child: const Text(AppStrings.exitLevel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _controller.resetLives();
+            },
+            child: const Text(AppStrings.tryAgain),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleCheckWord() async {
@@ -106,31 +142,11 @@ class _GameScreenState extends State<GameScreen>
       return;
     }
 
-    // Wrong answer / timeout shake
+    // Wrong answer shake
     await _shakeController.forward(from: 0);
 
     if (result == GameValidationState.outOfLives && mounted) {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          backgroundColor: const Color(0xFF0F172A),
-          title: const Text(
-            AppStrings.outOfLives,
-            style: TextStyle(fontWeight: FontWeight.w900),
-          ),
-          content: const Text(AppStrings.outOfLivesMessage),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _controller.resetLives();
-              },
-              child: const Text(AppStrings.tryAgain),
-            ),
-          ],
-        ),
-      );
+      _showOutOfLivesDialog();
     }
   }
 
@@ -143,6 +159,18 @@ class _GameScreenState extends State<GameScreen>
         child: ListenableBuilder(
           listenable: _controller,
           builder: (context, _) {
+            // Auto-show Out of Lives dialog when the timed-mode countdown
+            // removes the last life (timeout path bypasses _handleCheckWord).
+            if (_controller.validationState == GameValidationState.outOfLives &&
+                !_controller.isCompleted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                // Only show if no dialog is already open
+                if (ModalRoute.of(context)?.isCurrent == true) {
+                  _showOutOfLivesDialog();
+                }
+              });
+            }
             return AnimatedBuilder(
               animation: _shakeController,
               builder: (_, child) => Transform.translate(
@@ -199,8 +227,10 @@ class _GameScreenState extends State<GameScreen>
                                 ],
                               ),
                               Text(
-                                widget.challenge.patternTemplate.name
-                                    .toUpperCase(),
+                                _controller.isCompleted
+                                    ? widget.challenge.patternTemplate.name
+                                        .toUpperCase()
+                                    : 'MYSTERY PATTERN',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 18,

@@ -18,6 +18,7 @@ class AppStrings {
   static const String outOfLives = 'OUT OF LIVES 💔';
   static const String tryAgain = 'TRY AGAIN';
   static const String outOfLivesMessage = 'Look at the clue and try once more!';
+  static const String exitLevel = 'EXIT';
   static const String chooseLevel = 'CHOOSE A LEVEL';
   static const String yourJourney = 'YOUR JOURNEY';
   static const String mysteryWord = 'MYSTERY WORD';

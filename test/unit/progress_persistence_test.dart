@@ -8,6 +8,7 @@ import 'package:name_twist_game/data/models/word_content.dart';
 import 'package:name_twist_game/data/repositories/challenge_repository.dart';
 import 'package:name_twist_game/data/repositories/word_repository.dart';
 import 'package:name_twist_game/data/sources/local_word_data_source.dart';
+import 'package:name_twist_game/features/game/controller/game_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -154,6 +155,64 @@ void main() {
       final progress = storage.loadPlayerProgress();
       final total = progress.challengeStars.values.fold(0, (a, b) => a + b);
       expect(total, greaterThanOrEqualTo(3));
+    });
+
+    test(
+        'Completing a high-numbered Daily Challenge does not unlock or skip campaign levels',
+        () async {
+      final storage = await LocalStorageService.init();
+      final wordRepo = WordRepository(LocalWordDataSource());
+      final repo = ChallengeRepository(
+        wordRepository: wordRepo,
+        storageService: storage,
+      );
+
+      expect(storage.getUnlockedLevel(), 1);
+
+      // Take a high numbered challenge (e.g. challenge #450)
+      final highChallenge = allChallenges[449];
+      expect(highChallenge.challengeNumber, 450);
+
+      // Play as Daily Challenge (isDailyMode: true)
+      final controller = GameController(
+        challenge: highChallenge,
+        repository: repo,
+        isDailyMode: true,
+      );
+
+      // Spell the target word correctly
+      final targetWord = highChallenge.word;
+      for (var i = 0; i < targetWord.length; i++) {
+        final char = targetWord[i];
+        final nodeIndex = controller.nodes.indexWhere(
+          (n) =>
+              n.letter == char &&
+              !controller.isSelected(controller.nodes.indexOf(n)),
+        );
+        controller.selectLetter(nodeIndex);
+      }
+
+      final validation = await controller.validateSpelling();
+      expect(validation, GameValidationState.correct);
+      expect(controller.isCompleted, isTrue);
+
+      // Crucial: Campaign unlocked level must remain 1!
+      expect(storage.getUnlockedLevel(), 1);
+
+      // Save daily completion
+      await repo.saveDailyChallengeCompletion(
+        date: DateTime(2025, 10, 1),
+        starsEarned: controller.calculateStars(),
+        wordId: highChallenge.wordContent.id,
+      );
+
+      // Still must remain 1 in campaign
+      expect(storage.getUnlockedLevel(), 1);
+
+      // But the daily challenge record and word collection ARE updated
+      final progress = storage.loadPlayerProgress();
+      expect(progress.isDailyChallengeCompletedFor('2025-10-01'), isTrue);
+      expect(progress.isWordUnlocked(highChallenge.wordContent.id), isTrue);
     });
   });
 }

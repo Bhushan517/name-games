@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/routes/game_screen_args.dart';
 import '../../../app/routes/route_names.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/generated_challenge.dart';
@@ -50,13 +51,17 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     final earnedStars = await Navigator.pushNamed<int>(
       context,
       RouteNames.game,
-      arguments: _dailyChallenge,
+      arguments: GameScreenArgs(
+        challenge: _dailyChallenge!,
+        isDailyMode: true, // must NOT unlock campaign challenge numbers
+      ),
     );
 
     if (earnedStars != null && mounted) {
       await widget.challengeRepository.saveDailyChallengeCompletion(
         date: DateTime.now(),
         starsEarned: earnedStars,
+        wordId: _dailyChallenge!.wordContent.id,
       );
       setState(() {
         _progress = widget.challengeRepository.getPlayerProgress();

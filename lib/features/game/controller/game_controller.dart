@@ -21,6 +21,7 @@ class GameController extends ChangeNotifier {
   GameController({
     required this.challenge,
     required this.repository,
+    this.isDailyMode = false,
     Random? random,
   }) : _random = random ?? Random() {
     _initGame();
@@ -28,6 +29,11 @@ class GameController extends ChangeNotifier {
 
   final GeneratedChallenge challenge;
   final ChallengeRepository repository;
+
+  /// When true, completing the challenge does NOT call [repository.saveChallengeCompletion].
+  /// This prevents Daily Quest completions from unlocking or skipping campaign levels.
+  final bool isDailyMode;
+
   final Random _random;
 
   late List<LetterNode> _nodes;
@@ -301,10 +307,13 @@ class GameController extends ChangeNotifier {
       _validationState = GameValidationState.correct;
       HapticService.success();
       final stars = calculateStars();
-      await repository.saveChallengeCompletion(
-        challenge: challenge,
-        starsEarned: stars,
-      );
+      // Daily mode must never unlock or skip campaign challenge numbers.
+      if (!isDailyMode) {
+        await repository.saveChallengeCompletion(
+          challenge: challenge,
+          starsEarned: stars,
+        );
+      }
       notifyListeners();
       return _validationState;
     }
