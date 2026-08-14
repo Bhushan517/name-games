@@ -74,8 +74,13 @@ void main() {
       await repo.saveChallengeCompletion(challenge: challenge, starsEarned: 1);
 
       final progress = storage.loadPlayerProgress();
-      // Stars should keep the higher score
-      expect(progress.challengeStars[challenge.id], greaterThanOrEqualTo(1));
+      // Must keep the BEST (highest) score — replaying with fewer stars must NOT downgrade
+      expect(
+        progress.challengeStars[challenge.id],
+        equals(3),
+        reason:
+            'Replaying with 1 star must not overwrite the stored 3-star score',
+      );
     });
 
     test('Completing challenges sequentially unlocks next level each time',

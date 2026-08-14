@@ -37,7 +37,8 @@ class TtsService {
     } catch (e) {
       // Unsupported device or platform — silently degrade
       if (kDebugMode) debugPrint('[TtsService] init failed: $e');
-      _tts = null; // ensure stop() is a no-op in test / unsupported environments
+      _tts =
+          null; // ensure stop() is a no-op in test / unsupported environments
     }
   }
 

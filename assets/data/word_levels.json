@@ -23,7 +23,7 @@
     "meaningMarathi": "अंगावर काळे पट्टे असलेला भारताचा राष्ट्रीय प्राणी वाघ.",
     "meaningHindi": "काली धारियों वाला भारत का राष्ट्रीय पशु बाघ।",
     "pronunciation": "ty-ger",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "star",
     "minimumAge": 7
   },
@@ -51,7 +51,7 @@
     "meaningMarathi": "झाडांवर उड्या मारणारा हुशार व चपळ प्राणी माकड.",
     "meaningHindi": "पेड़ों पर उछल-कूद करने वाला फुर्तीला जानवर बंदर।",
     "pronunciation": "mun-kee",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -93,7 +93,7 @@
     "meaningMarathi": "उंच आकाशात उडणारा आणि तीक्ष्ण नजर असलेला गरुड पक्षी.",
     "meaningHindi": "ऊंचे आकाश में उड़ने वाला तेज नजर वाला चील/गरुड़।",
     "pronunciation": "ee-guhl",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "crown",
     "minimumAge": 7
   },
@@ -121,7 +121,7 @@
     "meaningMarathi": "पाठीवर कडक कवच असलेला सावकाश चालणारा कासव.",
     "meaningHindi": "कठोर खोल में रहने वाला धीमी चाल वाला कछुआ।",
     "pronunciation": "tur-tuhl",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -163,7 +163,7 @@
     "meaningMarathi": "झाडे आणि वन्यजीवांनी भरलेले विस्तीर्ण जंगल.",
     "meaningHindi": "पेड़-पौधों और वन्यजीवों से भरा विशाल जंगल।",
     "pronunciation": "for-ist",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -191,7 +191,7 @@
     "meaningMarathi": "जमिनीपासून खूप उंच असलेला विशाल पर्वत किंवा डोंगर.",
     "meaningHindi": "ऊंचा और विशाल प्राकृतिक भूभाग पर्वत (पहाड़)।",
     "pronunciation": "moun-tuhn",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "mountain",
     "minimumAge": 8
   },
@@ -205,7 +205,7 @@
     "meaningMarathi": "झाडावर उमलणारे सुंदर, रंगीबेरंगी आणि सुगंधी फूल.",
     "meaningHindi": "पौधे का सुंदर और सुगंधित भाग फूल (पुष्प)।",
     "pronunciation": "flou-er",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "flower",
     "minimumAge": 7
   },
@@ -233,7 +233,7 @@
     "meaningMarathi": "पावसानंतर आकाशात दिसणारे सात रंगांचे इंद्रधनुष्य.",
     "meaningHindi": "आसमान में सात रंगों का सुंदर धनुष (इंद्रधनुष)।",
     "pronunciation": "rayn-boh",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "spiral",
     "minimumAge": 8
   },
@@ -261,7 +261,7 @@
     "meaningMarathi": "सर्व बाजूंनी पाण्याने वेढलेला जमिनीचा तुकडा (बेट).",
     "meaningHindi": "चारों ओर से पानी से घिरा भूभाग (द्वीप/टापू)।",
     "pronunciation": "eye-luhnd",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "hexagon",
     "minimumAge": 8
   },
@@ -275,7 +275,7 @@
     "meaningMarathi": "फार कमी पाऊस पडणारा कोरडा वाळवंटी प्रदेश.",
     "meaningHindi": "रेत और बहुत कम पानी वाला सूखा इलाका (रेगिस्तान)।",
     "pronunciation": "dez-ert",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "lightning",
     "minimumAge": 8
   },
@@ -331,7 +331,7 @@
     "meaningMarathi": "घरामध्ये हवा आणि प्रकाश येण्यासाठी भिंतीला असलेली खिडकी.",
     "meaningHindi": "हवा और रोशनी आने के लिए दीवार में लगी खिड़की।",
     "pronunciation": "win-doh",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "square",
     "minimumAge": 7
   },
@@ -457,7 +457,7 @@
     "meaningMarathi": "विद्यार्थ्यांना ज्ञान देणारे आणि मार्गदर्शन करणारे शिक्षक.",
     "meaningHindi": "बच्चों को शिक्षा देने वाले आदरणीय शिक्षक (गुरुजी)।",
     "pronunciation": "tee-cher",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "spiral",
     "minimumAge": 8
   },
@@ -471,7 +471,7 @@
     "meaningMarathi": "शाळेत जाऊन नवीन गोष्टी शिकणारा विद्यार्थी.",
     "meaningHindi": "स्कूल में विद्या और ज्ञान प्राप्त करने वाला छात्र (विद्यार्थी)।",
     "pronunciation": "stoo-duhnt",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "mountain",
     "minimumAge": 8
   },
@@ -485,7 +485,7 @@
     "meaningMarathi": "निसर्ग आणि जगाचा अभ्यास करणारे विज्ञान शास्त्र.",
     "meaningHindi": "प्रकृति और ब्रह्मांड के नियमों को समझाने वाला विज्ञान।",
     "pronunciation": "sy-uhns",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "wave",
     "minimumAge": 8
   },
@@ -513,7 +513,7 @@
     "meaningMarathi": "शाळेत शिकवला जाणारा धडा किंवा शैक्षणिक पाठ.",
     "meaningHindi": "कक्षा में पढ़ाया जाने वाला विषय या सीख (सबक/पाठ)।",
     "pronunciation": "les-uhn",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -527,7 +527,7 @@
     "meaningMarathi": "पेन्सिलने लिहिलेले खोडण्यासाठी वापरले जाणारे खोडरबर.",
     "meaningHindi": "पेंसिल से लिखे को मिटाने वाला रबर (इरेज़र)।",
     "pronunciation": "ih-ray-ser",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "lightning",
     "minimumAge": 7
   },
@@ -583,7 +583,7 @@
     "meaningMarathi": "गव्हाच्या पिठापासून भाजून बनवलेला ब्रेड / पाव.",
     "meaningHindi": "गेहूं के आटे से पकाई जाने वाली पाव या रोटी (ब्रेड)।",
     "pronunciation": "bred",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "house",
     "minimumAge": 7
   },
@@ -597,7 +597,7 @@
     "meaningMarathi": "दुधापासून तयार केलेले स्वादिष्ट चीज / पनीर.",
     "meaningHindi": "दूध से बना स्वादिष्ट और पौष्टिक पनीर या चीज़।",
     "pronunciation": "cheez",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -653,7 +653,7 @@
     "meaningMarathi": "चॉकलेट आणि गोडवा असलेला कुरकुरीत बिस्कीट.",
     "meaningHindi": "बेक किया हुआ स्वादिष्ट और कुरकुरा मीठा बिस्कुट।",
     "pronunciation": "kook-ee",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -667,7 +667,7 @@
     "meaningMarathi": "मधमाश्यांनी फुलांच्या रसापासून बनवलेला गोड मध.",
     "meaningHindi": "मधुमक्खियों द्वारा फूलों से एकत्र किया गया मीठा शहद।",
     "pronunciation": "huhn-ee",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "crown",
     "minimumAge": 7
   },
@@ -751,7 +751,7 @@
     "meaningMarathi": "शारीरिक आणि मानसिक तंदुरुस्ती (चांगले आरोग्य).",
     "meaningHindi": "शारीरिक और मानसिक रूप से तंदुरुस्त रहने की अवस्था (स्वास्थ्य)।",
     "pronunciation": "helth",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "hexagon",
     "minimumAge": 8
   },
@@ -793,7 +793,7 @@
     "meaningMarathi": "फुफ्फुसांमधून आत घेतलेली आणि सोडलेली हवा (श्वास).",
     "meaningHindi": "जीवित रहने के लिए फेफड़ों द्वारा अंदर और बाहर ली जाने वाली सांस।",
     "pronunciation": "breth",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "wave",
     "minimumAge": 8
   },
@@ -807,7 +807,7 @@
     "meaningMarathi": "खेळण्यासाठी आणि काम करण्यासाठी शरीराला लागणारी ऊर्जा / ताकद.",
     "meaningHindi": "काम और खेलकूद करने के लिए आवश्यक शक्ति या ऊर्जा।",
     "pronunciation": "en-er-jee",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "lightning",
     "minimumAge": 8
   },
@@ -821,7 +821,7 @@
     "meaningMarathi": "शरीर ताजेतवाने करणारी शांत रात्रीची झोप.",
     "meaningHindi": "शरीर और मन को आराम देने वाली प्राकृतिक निद्रा (नींद)।",
     "pronunciation": "sleep",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "house",
     "minimumAge": 7
   },
@@ -905,7 +905,7 @@
     "meaningMarathi": "सूर्याशी संबंधित किंवा सूर्यप्रकाशापासून मिळणारी (सौर) ऊर्जा.",
     "meaningHindi": "सूर्य से संबंधित या धूप से प्राप्त होने वाली (सौर) ऊर्जा।",
     "pronunciation": "soh-ler",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "crown",
     "minimumAge": 7
   },
@@ -961,7 +961,7 @@
     "meaningMarathi": "एखाद्या ग्रहाचा सूर्याभोवती फिरण्याचा निश्चित मार्ग (कक्षा).",
     "meaningHindi": "किसी खगोलीय पिंड का दूसरे पिंड के चारों ओर परिक्रमा मार्ग (कक्षा)।",
     "pronunciation": "or-bit",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "house",
     "minimumAge": 7
   },
@@ -1003,7 +1003,7 @@
     "meaningMarathi": "संगीताच्या तालावर आनंदाने नृत्य करणे / नाचणे.",
     "meaningHindi": "संगीत की धुन पर खुशी से नाचना (नृत्य करना)।",
     "pronunciation": "dans",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "heart",
     "minimumAge": 7
   },
@@ -1045,7 +1045,7 @@
     "meaningMarathi": "नवीन माहिती मिळवण्यासाठी अनोळखी जागांचा शोध घेणे.",
     "meaningHindi": "नई जगहों और रहस्यों को जानने के लिए खोजबीन करना।",
     "pronunciation": "ek-splor",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "spiral",
     "minimumAge": 8
   },
@@ -1073,7 +1073,7 @@
     "meaningMarathi": "कानाने लक्षपूर्वक आवाज किंवा गोष्ट ऐकणे.",
     "meaningHindi": "कान लगाकर ध्यानपूर्वक कोई बात या ध्वनि सुनना।",
     "pronunciation": "lis-uhn",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "lightning",
     "minimumAge": 7
   },
@@ -1101,7 +1101,7 @@
     "meaningMarathi": "एका ठिकाणाहून दुसऱ्या ठिकाणी आनंददायी प्रवास करणे.",
     "meaningHindi": "एक स्थान से दूसरे स्थान की यात्रा करना (सफर करना)।",
     "pronunciation": "trav-uhl",
-    "difficulty": "easy",
+    "difficulty": "hard",
     "patternTemplate": "rocket",
     "minimumAge": 7
   },
@@ -1129,7 +1129,7 @@
     "meaningMarathi": "नदी किंवा दरीवरून जाण्यासाठी बांधलेला पूल.",
     "meaningHindi": "नदी या घाटी के ऊपर से रास्ता पार कराने वाला पुल (सेतु)।",
     "pronunciation": "brij",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -1157,7 +1157,7 @@
     "meaningMarathi": "जहाजे सुरक्षित उभी राहण्याचे सागरी बंदर.",
     "meaningHindi": "समुद्र तट पर जहाजों के रुकने का सुरक्षित स्थान (बंदरगाह)।",
     "pronunciation": "hahr-ber",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "wave",
     "minimumAge": 8
   },
@@ -1185,7 +1185,7 @@
     "meaningMarathi": "पायांनी पायडल मारून चालवली जाणारी दोन चाकांची सायकल.",
     "meaningHindi": "पैडल मारकर चलाई जाने वाली दो पहियों की सवारी (साइकिल)।",
     "pronunciation": "by-si-kuhl",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "mountain",
     "minimumAge": 8
   },
@@ -1213,7 +1213,7 @@
     "meaningMarathi": "राजे-महाराजे राहत असलेले भव्य आणि भक्कम दगडी राजवाडा / किल्ला.",
     "meaningHindi": "राजा-महाराजाओं के रहने का भव्य और मजबूत महल या किला।",
     "pronunciation": "kas-uhl",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "crown",
     "minimumAge": 7
   },
@@ -1227,7 +1227,7 @@
     "meaningMarathi": "शांती आणि प्रार्थनेसाठी असलेले पवित्र मंदिर.",
     "meaningHindi": "पूजा-अर्चना और मन की शांति का पावन स्थल (मंदिर)।",
     "pronunciation": "tem-puhl",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "hexagon",
     "minimumAge": 7
   },
@@ -1255,7 +1255,7 @@
     "meaningMarathi": "शहरांना जोडणारा विस्तीर्ण आणि रुंद महामार्ग (हायवे).",
     "meaningHindi": "शहरों को आपस में जोड़ने वाली चौड़ी मुख्य सड़क (राजमार्ग)।",
     "pronunciation": "hy-way",
-    "difficulty": "medium",
+    "difficulty": "hard",
     "patternTemplate": "mountain",
     "minimumAge": 8
   },
@@ -1269,7 +1269,7 @@
     "meaningMarathi": "संकटांना न घाबरता धैर्याने सामोरे जाणारा शूर / धीट.",
     "meaningHindi": "मुसीबतों से बिना डरे मुकाबला करने वाला साहसी (बहादुर)।",
     "pronunciation": "brayv",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "star",
     "minimumAge": 7
   },
@@ -1311,7 +1311,7 @@
     "meaningMarathi": "मनातील आणि परिसरातील शांतता व सौहार्द.",
     "meaningHindi": "लड़ाई-झगड़े से मुक्त शांति और सुकून की स्थिति।",
     "pronunciation": "pees",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "crown",
     "minimumAge": 7
   },
@@ -1339,7 +1339,7 @@
     "meaningMarathi": "अत्यंत उत्साही, उल्हासित आणि आनंदमयी.",
     "meaningHindi": "हंसी-खुशी और उत्सव से भरा हुआ (आनंदित)।",
     "pronunciation": "joy-fuhl",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "flower",
     "minimumAge": 7
   },
@@ -1353,7 +1353,7 @@
     "meaningMarathi": "सुख-दुःखात सोबत राहणारा जिवाभावाचा मित्र / सखा.",
     "meaningHindi": "सुख-दुख में साथ निभाने वाला सच्चा साथी (दोस्त/मित्र)।",
     "pronunciation": "frend",
-    "difficulty": "easy",
+    "difficulty": "medium",
     "patternTemplate": "lightning",
     "minimumAge": 7
   },

@@ -74,7 +74,7 @@ Words are stored in [`assets/data/word_levels.json`](assets/data/word_levels.jso
 | Categories | 10 (Animals, Nature, Home, School, Food, Body & Health, Space & Science, Action Words, Places & Transport, Feelings & Values) |
 | Words per category | 10 |
 | Word length | 4–8 letters |
-| Difficulty | Easy ~40%, Medium ~40%, Hard ~20% |
+| Difficulty | Easy 40%, Medium 40%, Hard 20% |
 | Languages | English + Marathi + Hindi meanings |
 | Extras | Emoji, pronunciation guide, category, pattern template, min. age |
 
