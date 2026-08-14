@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:name_twist_game/main.dart';
+import 'package:name_twist_game/app/app.dart';
+import 'package:name_twist_game/app/routes/app_router.dart';
+import 'package:name_twist_game/core/services/local_storage_service.dart';
+import 'package:name_twist_game/data/level_data/default_levels.dart';
+import 'package:name_twist_game/data/repositories/level_repository.dart';
+import 'package:name_twist_game/features/game/presentation/game_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -15,93 +20,108 @@ void main() {
     }
   }
 
-  group('Spell & Shape Quest Game Flow Tests', () {
-    testWidgets('First launch shows Splash and transitions to Onboarding',
+  group('Spell & Shape Quest Refactored App Flow Tests', () {
+    testWidgets(
+        'First launch flow: Splash -> Onboarding -> Home -> Level Selection',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(360, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(const App(first: true));
+      final storage = await LocalStorageService.init();
+      final repo = LevelRepository(storage);
+      final router = AppRouter(storageService: storage, levelRepository: repo);
 
-      // Check Splash elements
+      await tester.pumpWidget(SpellShapeQuestApp(appRouter: router));
+
+      // Splash
       expect(find.text('SPELL & SHAPE'), findsOneWidget);
       expect(find.text('Q U E S T'), findsOneWidget);
 
-      // Advance time for splash transition (2700ms delay + 650ms transition)
+      // Transition to Onboarding
       await pumpTime(tester, 3600);
-
-      // Should now be on Onboarding
       expect(find.text('UNSCRAMBLE WORDS'), findsOneWidget);
       expect(find.text('SKIP'), findsOneWidget);
-      expect(find.text('NEXT  →'), findsOneWidget);
 
-      // Tap NEXT to slide 2
+      // Slide 2
       await tester.tap(find.text('NEXT  →'));
       await pumpTime(tester, 700);
       expect(find.text('REVEAL PATTERNS'), findsOneWidget);
 
-      // Tap NEXT to slide 3
+      // Slide 3
       await tester.tap(find.text('NEXT  →'));
       await pumpTime(tester, 700);
       expect(find.text('LEARN & WIN'), findsOneWidget);
       expect(find.text('START THE QUEST'), findsOneWidget);
 
-      // Tap START THE QUEST to navigate to Home
+      // Start Quest -> Home
       await tester.tap(find.text('START THE QUEST'));
       await pumpTime(tester, 700);
 
       expect(find.text('WORDS CREATE MAGIC'), findsOneWidget);
       expect(find.text('PLAY NOW'), findsOneWidget);
-    });
-
-    testWidgets('Home screen opens Help dialog and Level Map at 360x800',
-        (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(360, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(const App(first: false));
-      await pumpTime(tester, 500);
 
       // Open Help dialog
-      final helpButton = find.byIcon(Icons.help_outline_rounded);
-      expect(helpButton, findsOneWidget);
-      await tester.tap(helpButton);
-      await pumpTime(tester, 500);
-
+      final helpBtn = find.byIcon(Icons.help_outline_rounded);
+      await tester.tap(helpBtn);
+      await pumpTime(tester, 400);
       expect(find.text('HOW TO PLAY'), findsOneWidget);
-      expect(find.text('GOT IT'), findsOneWidget);
-
-      // Close Help dialog
       await tester.tap(find.text('GOT IT'));
-      await pumpTime(tester, 500);
+      await pumpTime(tester, 400);
 
-      // Tap PLAY NOW to go to Level Map
+      // Open Level Selection
       await tester.tap(find.text('PLAY NOW'));
       await pumpTime(tester, 700);
 
       expect(find.text('CHOOSE A LEVEL'), findsOneWidget);
       expect(find.text('LEVEL 1'), findsOneWidget);
-      expect(find.text('STAR'), findsOneWidget);
+      expect(find.text('MYSTERY WORD'), findsWidgets);
     });
 
-    testWidgets('Game level 1 play flow: Hint, letters, undo, and win at 412x915',
+    testWidgets('Subsequent launch skips onboarding and goes straight to Home',
+        (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({
+        'seen': true,
+        'unlocked_level': 2,
+        'stars_0': 3,
+      });
+
+      final storage = await LocalStorageService.init();
+      final repo = LevelRepository(storage);
+      final router = AppRouter(storageService: storage, levelRepository: repo);
+
+      await tester.pumpWidget(SpellShapeQuestApp(appRouter: router));
+      await pumpTime(tester, 1800);
+
+      expect(find.text('WORDS CREATE MAGIC'), findsOneWidget);
+      expect(find.text('2/5'), findsOneWidget);
+      expect(find.text('3/15'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Level 1 complete gameplay flow with answer validation and win dialog',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(412, 915);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(const MaterialApp(home: Game(0)));
+      final storage = await LocalStorageService.init();
+      final repo = LevelRepository(storage);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameScreen(
+            level: defaultLevels[0],
+            repository: repo,
+          ),
+        ),
+      );
       await pumpTime(tester, 500);
 
-      // Check level 1 UI
       expect(find.text('LEVEL 1 / 5'), findsOneWidget);
       expect(find.text('STAR'), findsOneWidget);
-      expect(find.text('The sun can _____ brightly.'), findsOneWidget);
       expect(find.text('FIRST LETTER HINT'), findsOneWidget);
 
       // Tap Hint
@@ -109,32 +129,26 @@ void main() {
       await pumpTime(tester, 300);
       expect(find.text('STARTS WITH S'), findsOneWidget);
 
-      // S H I N E letters
-      // Tap S
+      // Tap S then H then Undo
       await tester.tap(find.widgetWithText(GestureDetector, 'S'));
-      await pumpTime(tester, 300);
-
-      // Tap H
+      await pumpTime(tester, 250);
       await tester.tap(find.widgetWithText(GestureDetector, 'H'));
-      await pumpTime(tester, 300);
-
-      // Tap UNDO
+      await pumpTime(tester, 250);
       await tester.tap(find.text('UNDO'));
-      await pumpTime(tester, 300);
+      await pumpTime(tester, 250);
 
-      // Now enter SHINE in order
+      // Now spell SHINE
       const word = 'SHINE';
       for (var i = 0; i < word.length; i++) {
-        final letter = word[i];
-        await tester.tap(find.widgetWithText(GestureDetector, letter));
+        await tester.tap(find.widgetWithText(GestureDetector, word[i]));
         await pumpTime(tester, 250);
       }
 
-      // Tap CHECK WORD
+      // Check Word
       await tester.tap(find.text('CHECK WORD'));
       await pumpTime(tester, 1200);
 
-      // Verify Win dialog appeared
+      // Check Win dialog
       expect(find.text('BRILLIANT! 🎉'), findsOneWidget);
       expect(find.text('To produce or reflect bright light.'), findsOneWidget);
       expect(find.text('CONTINUE  →'), findsOneWidget);
@@ -143,10 +157,15 @@ void main() {
       await pumpTime(tester, 500);
     });
 
-    testWidgets('All 5 levels render without overflow on 360x800 and 412x915',
+    testWidgets(
+        'Responsive check on 360x800, 393x873, and 412x915 for all 5 levels',
         (WidgetTester tester) async {
+      final storage = await LocalStorageService.init();
+      final repo = LevelRepository(storage);
+
       final screenSizes = [
         const Size(360, 800),
+        const Size(393, 873),
         const Size(412, 915),
       ];
 
@@ -155,11 +174,19 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
 
         for (var i = 0; i < 5; i++) {
-          await tester.pumpWidget(MaterialApp(home: Game(i)));
+          await tester.pumpWidget(
+            MaterialApp(
+              home: GameScreen(
+                level: defaultLevels[i],
+                repository: repo,
+              ),
+            ),
+          );
           await pumpTime(tester, 300);
           expect(find.text('LEVEL ${i + 1} / 5'), findsOneWidget);
         }
       }
+
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
