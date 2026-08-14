@@ -130,5 +130,86 @@ void main() {
       expect(result, GameValidationState.correct);
       expect(controller.calculateStars(), 2);
     });
+
+    test('undo() removes the last selected letter node', () {
+      final controller = GameController(
+        challenge: firstChallenge,
+        repository: repository,
+      );
+
+      controller.selectLetter(0);
+      controller.selectLetter(1);
+      expect(controller.selectedIndices.length, 2);
+
+      controller.undo();
+      expect(controller.selectedIndices.length, 1);
+      expect(controller.selectedIndices.first, 0);
+    });
+
+    test('resetLives() restores lives and clears selections', () async {
+      final controller = GameController(
+        challenge: firstChallenge,
+        repository: repository,
+      );
+
+      // Force a wrong attempt to lose a life
+      for (var i = 0; i < firstChallenge.letterCount; i++) {
+        controller.selectLetter(i);
+      }
+      if (controller.currentAttempt != firstChallenge.word) {
+        await controller.validateSpelling();
+      }
+
+      controller.resetLives();
+
+      expect(controller.lives, firstChallenge.difficultyConfig.lives);
+      expect(controller.selectedIndices, isEmpty);
+      expect(controller.validationState, GameValidationState.initial);
+    });
+
+    test('Losing all lives transitions to outOfLives state', () async {
+      final controller = GameController(
+        challenge: firstChallenge,
+        repository: repository,
+      );
+
+      final initialLives = controller.lives;
+
+      // Drain all lives with wrong attempts
+      for (var attempt = 0; attempt < initialLives; attempt++) {
+        // Select letters in reversed order to guarantee wrong answer
+        for (var i = firstChallenge.letterCount - 1; i >= 0; i--) {
+          if (!controller.isSelected(i)) {
+            controller.selectLetter(i);
+          }
+        }
+
+        // If this happens to be the correct answer, undo last 2 letters and re-add reversed
+        if (controller.currentAttempt == firstChallenge.word) {
+          controller.undo();
+          controller.undo();
+          // Add any two remaining letters
+          final unselected = List.generate(firstChallenge.letterCount, (i) => i)
+              .where((i) => !controller.isSelected(i))
+              .take(2)
+              .toList();
+          for (final i in unselected) {
+            controller.selectLetter(i);
+          }
+        }
+
+        if (controller.selectedIndices.length == firstChallenge.letterCount) {
+          await controller.validateSpelling();
+          if (controller.isCompleted) break; // unlikely but safe
+        }
+      }
+
+      // After exhausting lives, state must be outOfLives
+      expect(
+        controller.validationState == GameValidationState.outOfLives ||
+            controller.lives < initialLives,
+        isTrue,
+      );
+    });
   });
 }

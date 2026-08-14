@@ -61,8 +61,7 @@ void main() {
       }
     });
 
-    testWidgets(
-        'Responsive layout: no overflow on 360x800, 393x873, 412x915',
+    testWidgets('Responsive layout: no overflow on 360x800, 393x873, 412x915',
         (WidgetTester tester) async {
       final storage = await LocalStorageService.init();
       final wordRepo = WordRepository(LocalWordDataSource());

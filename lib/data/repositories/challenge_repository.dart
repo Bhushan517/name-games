@@ -50,7 +50,8 @@ class ChallengeRepository {
   GeneratedChallenge getDailyChallenge(DateTime date) {
     final challenges = getCachedChallenges();
     if (challenges.isEmpty) {
-      throw StateError('Challenges must be initialized before getting Daily Challenge.');
+      throw StateError(
+          'Challenges must be initialized before getting Daily Challenge.');
     }
 
     // Deterministic hash based on YYYY-MM-DD

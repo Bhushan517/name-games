@@ -55,7 +55,9 @@ void main() {
       for (var i = 0; i < challenge.word.length; i++) {
         final char = challenge.word[i];
         final nodeIndex = controller.nodes.indexWhere(
-          (n) => n.letter == char && !controller.isSelected(controller.nodes.indexOf(n)),
+          (n) =>
+              n.letter == char &&
+              !controller.isSelected(controller.nodes.indexOf(n)),
         );
         controller.selectLetter(nodeIndex);
       }
@@ -104,7 +106,9 @@ void main() {
       for (var i = 0; i < challenge.word.length; i++) {
         final char = challenge.word[i];
         final nodeIndex = controller.nodes.indexWhere(
-          (n) => n.letter == char && !controller.isSelected(controller.nodes.indexOf(n)),
+          (n) =>
+              n.letter == char &&
+              !controller.isSelected(controller.nodes.indexOf(n)),
         );
         controller.selectLetter(nodeIndex);
       }
@@ -149,6 +153,58 @@ void main() {
       expect(controller.isTimerPaused, isFalse);
 
       controller.dispose();
+    });
+
+    test('Mode 2: clearLastMissingLetter removes the last filled slot', () {
+      final challenge = allChallenges
+          .firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+      final controller = GameController(
+        challenge: challenge,
+        repository: challengeRepository,
+      );
+
+      expect(controller.missingIndices.isNotEmpty, isTrue);
+
+      // Fill first missing slot
+      final correctChar = challenge.word[controller.missingIndices.first];
+      controller.fillMissingLetter(correctChar);
+      expect(controller.filledMissingLetters.length, 1);
+
+      // Clear it
+      controller.clearLastMissingLetter();
+      expect(controller.filledMissingLetters, isEmpty);
+    });
+
+    test('Mode 2: incomplete submission returns incomplete state', () async {
+      final challenge = allChallenges
+          .firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+      final controller = GameController(
+        challenge: challenge,
+        repository: challengeRepository,
+      );
+
+      // Don't fill anything — submit empty
+      final state = await controller.validateSpelling();
+      expect(state, GameValidationState.incomplete);
+      expect(controller.isCompleted, isFalse);
+    });
+
+    test(
+        'Mode 1: incomplete submission (fewer letters than word) returns incomplete',
+        () async {
+      final challenge =
+          allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
+      final controller = GameController(
+        challenge: challenge,
+        repository: challengeRepository,
+      );
+
+      // Select only one letter
+      controller.selectLetter(0);
+      expect(controller.selectedIndices.length, 1);
+
+      final state = await controller.validateSpelling();
+      expect(state, GameValidationState.incomplete);
     });
   });
 }

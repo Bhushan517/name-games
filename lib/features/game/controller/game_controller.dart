@@ -238,11 +238,11 @@ class GameController extends ChangeNotifier {
   }
 
   // --- TTS Speak ---
+  /// Speaks the actual English word aloud (e.g. "EAGLE") so the child hears
+  /// a clear, natural pronunciation — not the hyphenated phonetic string.
   Future<void> speakWordOrClue() async {
     HapticService.tap();
-    await TtsService.speak(challenge.wordContent.pronunciation.isNotEmpty
-        ? challenge.wordContent.pronunciation
-        : challenge.wordContent.sentenceClue);
+    await TtsService.speak(challenge.word);
   }
 
   // --- User Selection Actions ---
