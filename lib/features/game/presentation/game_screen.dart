@@ -72,7 +72,12 @@ class _GameScreenState extends State<GameScreen>
     super.dispose();
   }
 
-  void _showOutOfLivesDialog() {
+  bool _isOutOfLivesDialogVisible = false;
+
+  void _showOutOfLivesDialogIfNeeded() {
+    if (_isOutOfLivesDialogVisible || !mounted) return;
+
+    _isOutOfLivesDialogVisible = true;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -86,21 +91,26 @@ class _GameScreenState extends State<GameScreen>
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context); // Back to level selection / daily screen
+              _isOutOfLivesDialogVisible = false;
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(
+                  context); // Return to Level Selection / previous screen
             },
             child: const Text(AppStrings.exitLevel),
           ),
           FilledButton(
             onPressed: () {
-              Navigator.pop(context);
+              _isOutOfLivesDialogVisible = false;
+              Navigator.pop(context); // Close dialog
               _controller.resetLives();
             },
             child: const Text(AppStrings.tryAgain),
           ),
         ],
       ),
-    );
+    ).then((_) {
+      _isOutOfLivesDialogVisible = false;
+    });
   }
 
   Future<void> _handleCheckWord() async {
@@ -146,7 +156,7 @@ class _GameScreenState extends State<GameScreen>
     await _shakeController.forward(from: 0);
 
     if (result == GameValidationState.outOfLives && mounted) {
-      _showOutOfLivesDialog();
+      _showOutOfLivesDialogIfNeeded();
     }
   }
 
@@ -164,11 +174,7 @@ class _GameScreenState extends State<GameScreen>
             if (_controller.validationState == GameValidationState.outOfLives &&
                 !_controller.isCompleted) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                // Only show if no dialog is already open
-                if (ModalRoute.of(context)?.isCurrent == true) {
-                  _showOutOfLivesDialog();
-                }
+                _showOutOfLivesDialogIfNeeded();
               });
             }
             return AnimatedBuilder(
