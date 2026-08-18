@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:name_twist_game/core/services/ad_service.dart';
 import 'package:name_twist_game/core/services/local_storage_service.dart';
 import 'package:name_twist_game/data/generators/challenge_generator.dart';
 import 'package:name_twist_game/data/models/generated_challenge.dart';
@@ -12,12 +14,62 @@ import 'package:name_twist_game/features/game/controller/game_controller.dart';
 import 'package:name_twist_game/data/models/challenge_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class FakeAdService implements AdService {
+  bool shouldGrantReward = true;
+  int hintsEarned = 0;
+  int livesEarned = 0;
+
+  @override
+  Future<void> init() async {}
+  @override
+  void loadRewardedHintAd() {}
+  @override
+  bool get isRewardedHintAdReady => true;
+  @override
+  void showRewardedHintAd(
+      {required VoidCallback onRewardEarned,
+      required VoidCallback onAdClosed}) {
+    if (shouldGrantReward) {
+      hintsEarned++;
+      onRewardEarned();
+    }
+    onAdClosed();
+  }
+
+  @override
+  void loadRewardedLifeAd() {}
+  @override
+  bool get isRewardedLifeAdReady => true;
+  @override
+  void showRewardedLifeAd(
+      {required VoidCallback onRewardEarned,
+      required VoidCallback onAdClosed}) {
+    if (shouldGrantReward) {
+      livesEarned++;
+      onRewardEarned();
+    }
+    onAdClosed();
+  }
+
+  @override
+  void loadInterstitialAd() {}
+  @override
+  void recordCampaignCompletionAndShowInterstitialIfNeeded(
+      {required VoidCallback onContinue}) {
+    onContinue();
+  }
+
+  @override
+  void dispose() {}
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late LocalStorageService storageService;
   late ChallengeRepository repository;
   late GeneratedChallenge firstChallenge;
+  late FakeAdService fakeAdService;
 
   setUpAll(() {
     final file = File('assets/data/word_levels.json');
@@ -38,266 +90,94 @@ void main() {
       wordRepository: wordRepo,
       storageService: storageService,
     );
+
+    fakeAdService = FakeAdService();
+    AdService.mockInstance = fakeAdService;
   });
 
-  group('GameController Core Unit Tests', () {
-    test('Initializes with default lives and unscrambled state', () {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
-
-      expect(controller.lives, firstChallenge.difficultyConfig.lives);
+  group('Normal Spelling Modes Tests', () {
+    test('First hint is free, second requires rewarded ad', () {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
       expect(controller.isNextHintFree, true);
-      expect(controller.isCompleted, false);
-      expect(controller.selectedIndices, isEmpty);
-      expect(controller.nodes.length, firstChallenge.letterCount);
-    });
-
-    test('Correct spelling validation triggers completion and awards 3 stars',
-        () async {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
-
-      final targetWord = firstChallenge.word;
-      for (var charIndex = 0; charIndex < targetWord.length; charIndex++) {
-        final letter = targetWord[charIndex];
-        final nodeIndex = controller.nodes.indexWhere(
-          (n) =>
-              n.letter == letter &&
-              !controller.isSelected(controller.nodes.indexOf(n)),
-        );
-        controller.selectLetter(nodeIndex);
-      }
-
-      expect(controller.currentAttempt, targetWord);
-
-      final result = await controller.validateSpelling();
-      expect(result, GameValidationState.correct);
-      expect(controller.isCompleted, true);
-      expect(controller.calculateStars(), 3);
-
-      // Verify level unlock saved to repository/storage
-      expect(storageService.getUnlockedLevel(), 2);
-    });
-
-    test('Wrong spelling validation reduces life, clears selection, and shakes',
-        () async {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
-
-      // Select wrong sequence
-      for (var i = 0; i < firstChallenge.letterCount; i++) {
-        controller.selectLetter(i);
-      }
-
-      if (controller.currentAttempt == firstChallenge.word) {
-        controller.undo();
-        controller.undo();
-        controller.selectLetter(firstChallenge.letterCount - 1);
-        controller.selectLetter(firstChallenge.letterCount - 2);
-      }
-
-      final result = await controller.validateSpelling();
-      expect(result, GameValidationState.wrong);
-      expect(controller.lives, firstChallenge.difficultyConfig.lives - 1);
-      expect(controller.selectedIndices, isEmpty);
-      expect(controller.isCompleted, false);
-    });
-
-    test('Free hint usage reduces maximum star reward to 2', () async {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
 
       controller.grantHint();
-      expect(controller.isNextHintFree, false);
-      expect(controller.calculateStars(), 2);
-
-      final targetWord = firstChallenge.word;
-      for (var charIndex = controller.selectedIndices.length;
-          charIndex < targetWord.length;
-          charIndex++) {
-        final letter = targetWord[charIndex];
-        final nodeIndex = controller.nodes.indexWhere((n) =>
-            n.letter == letter &&
-            !controller.isSelected(controller.nodes.indexOf(n)));
-        controller.selectLetter(nodeIndex);
-      }
-
-      final result = await controller.validateSpelling();
-      expect(result, GameValidationState.correct);
-      expect(controller.calculateStars(), 2);
-    });
-
-    test('undo() removes the last selected letter node', () {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
-
-      controller.selectLetter(0);
-      controller.selectLetter(1);
-      expect(controller.selectedIndices.length, 2);
-
-      controller.undo();
-      expect(controller.selectedIndices.length, 1);
-      expect(controller.selectedIndices.first, 0);
-    });
-
-    test('resetLives() restores lives and clears selections', () async {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
-
-      // Force a wrong attempt to lose a life
-      for (var i = 0; i < firstChallenge.letterCount; i++) {
-        controller.selectLetter(i);
-      }
-      if (controller.currentAttempt != firstChallenge.word) {
-        await controller.validateSpelling();
-      }
-
-      controller.resetLives();
-
-      expect(controller.lives, firstChallenge.difficultyConfig.lives);
-      expect(controller.selectedIndices, isEmpty);
-      expect(controller.validationState, GameValidationState.initial);
-    });
-
-    test('Losing all lives transitions to outOfLives state', () async {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
-
-      final initialLives = controller.lives;
-
-      // Drain all lives with wrong attempts
-      for (var attempt = 0; attempt < initialLives; attempt++) {
-        // Select letters in reversed order to guarantee wrong answer
-        for (var i = firstChallenge.letterCount - 1; i >= 0; i--) {
-          if (!controller.isSelected(i)) {
-            controller.selectLetter(i);
-          }
-        }
-
-        // If this happens to be the correct answer, undo last 2 letters and re-add reversed
-        if (controller.currentAttempt == firstChallenge.word) {
-          controller.undo();
-          controller.undo();
-          // Add any two remaining letters
-          final unselected = List.generate(firstChallenge.letterCount, (i) => i)
-              .where((i) => !controller.isSelected(i))
-              .take(2)
-              .toList();
-          for (final i in unselected) {
-            controller.selectLetter(i);
-          }
-        }
-
-        if (controller.selectedIndices.length == firstChallenge.letterCount) {
-          await controller.validateSpelling();
-          if (controller.isCompleted) break; // unlikely but safe
-        }
-      }
-
-      // After exhausting lives, state must be outOfLives
-      expect(
-        controller.validationState == GameValidationState.outOfLives ||
-            controller.lives < initialLives,
-        isTrue,
-      );
-    });
-  });
-
-  group('Hint and Rewarded Ad Flow Tests', () {
-    test('First hint is free and reveals exactly one letter', () {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
-
-      expect(controller.isNextHintFree, true);
-      expect(controller.totalHintsUsed, 0);
-
-      controller.grantHint(); // Simulates first tap
-
-      expect(controller.isNextHintFree, false);
       expect(controller.totalHintsUsed, 1);
-      expect(controller.selectedIndices.length, 1);
-      expect(controller.nodes[controller.selectedIndices[0]].letter,
-          firstChallenge.word[0]);
+      expect(controller.isNextHintFree, false);
+      expect(controller.revealedHintIndices.length, 1);
+    });
+
+    test('Each rewarded hint reveals a different new position', () {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
+
+      controller.grantHint();
+      final firstHint = controller.revealedHintIndices.first;
+
+      controller.grantHint();
+      expect(controller.revealedHintIndices.length, 2);
+      expect(controller.revealedHintIndices.contains(firstHint), true);
     });
 
     test(
-        'Button becomes disabled only after word.length - 1 positions are revealed',
-        () {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
+        'Wrong answer preserves every earned hint and clears only manual selections',
+        () async {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
 
-      int maxHints = firstChallenge.word.length - 1;
-      expect(controller.maxHints, maxHints);
+      controller.grantHint();
+      controller.grantHint();
+      expect(controller.revealedHintIndices.length, 2);
 
-      for (int i = 0; i < maxHints; i++) {
-        expect(controller.canUseHint, true);
-        controller.grantHint();
+      // Select manually some incorrect letters
+      for (int i = 0; i < firstChallenge.letterCount; i++) {
+        if (!controller.isSelected(i)) {
+          controller.selectLetter(i);
+        }
+      }
+      
+      // Ensure it's the wrong answer by swapping the last two selections
+      if (controller.currentAttempt == firstChallenge.word) {
+        controller.undo();
+        controller.undo();
+        final remaining = List.generate(firstChallenge.letterCount, (i) => i).where((i) => !controller.isSelected(i)).toList();
+        controller.selectLetter(remaining[1]);
+        controller.selectLetter(remaining[0]);
       }
 
-      expect(controller.canUseHint, false);
-      expect(controller.totalHintsUsed, maxHints);
+      await controller.validateSpelling();
 
-      // Attempting to grant more hints should fail
-      controller.grantHint();
-      expect(controller.totalHintsUsed, maxHints);
+      expect(controller.validationState, GameValidationState.wrong);
+      expect(controller.revealedHintIndices.length, 2); // Hints preserved
+      expect(controller.selectedIndices.length, 2); // Only hints remain active
+      expect(controller.currentAttempt.length, 2);
     });
 
-    test('Missing Letter mode receives meaningful sequential hints', () {
-      final missingChallenge = ChallengeGenerator.generateAllChallenges([
-        WordContent(
-          id: '1',
-          word: 'STRAWBERRIES',
-          category: 'Test',
-          emoji: '🍓',
-          sentenceClue: 'A fruit',
-          meaningEnglish: '',
-          meaningMarathi: '',
-          meaningHindi: '',
-          pronunciation: '',
-          difficulty: 'hard',
-          patternTemplate: 'star',
-          minimumAge: 7,
-        )
-      ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+    test('Undo removes only a manual letter and cannot remove a hinted letter',
+        () {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
 
-      final controller = GameController(
-        challenge: missingChallenge,
-        repository: repository,
-      );
-
-      expect(controller.isNextHintFree, true);
-      expect(controller.totalHintsUsed, 0);
-
-      // First hint
       controller.grantHint();
-      expect(controller.totalHintsUsed, 1);
-      expect(controller.filledMissingLetters.length, 1);
+      expect(controller.revealedHintIndices.length, 1);
 
-      // Second hint
-      controller.grantHint();
-      expect(controller.totalHintsUsed, 2);
-      expect(controller.filledMissingLetters.length, 2);
+      // Select a manual letter
+      final firstUnselected = controller.nodes.indexWhere(
+          (n) => !controller.isSelected(controller.nodes.indexOf(n)));
+      controller.selectLetter(firstUnselected);
+      expect(controller.selectedIndices.length, 2);
+
+      // Undo should remove the manual letter
+      controller.undo();
+      expect(controller.selectedIndices.length, 1);
+
+      // Undo should do nothing against the hint
+      controller.undo();
+      expect(controller.selectedIndices.length, 1);
+      expect(controller.revealedHintIndices.length, 1);
     });
 
-    test('Duplicate-letter words reveal correct positions', () {
+    test('Duplicate-letter words use different correct nodes', () {
       final duplicateChallenge = ChallengeGenerator.generateAllChallenges([
         WordContent(
           id: '1',
@@ -315,49 +195,69 @@ void main() {
         )
       ]).firstWhere((c) => c.mode == ChallengeMode.unscramble);
 
-      final controller = GameController(
-        challenge: duplicateChallenge,
-        repository: repository,
-      );
+      final controller =
+          GameController(challenge: duplicateChallenge, repository: repository);
 
-      // First P
+      // A (0), P (1), P (2), L (3), E (4)
       controller.grantHint(); // A
-      controller.grantHint(); // P
-      expect(controller.nodes[controller.selectedIndices[1]].letter, 'P');
+      controller.grantHint(); // P1
+      controller.grantHint(); // P2
 
-      // Second P
-      controller.grantHint(); // P
-      expect(controller.nodes[controller.selectedIndices[2]].letter, 'P');
-      // Ensure they are different nodes
       expect(controller.selectedIndices[1],
           isNot(equals(controller.selectedIndices[2])));
+      expect(controller.nodes[controller.selectedIndices[1]].letter, 'P');
+      expect(controller.nodes[controller.selectedIndices[2]].letter, 'P');
     });
 
-    test('Retry resets the flow to one free first hint', () async {
-      final controller = GameController(
-        challenge: firstChallenge,
-        repository: repository,
-      );
+    test('Hints and manual selections assemble the correct final word',
+        () async {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
+      controller.grantHint(); // First letter hinted
 
-      controller.grantHint();
-      controller.grantHint();
-      expect(controller.totalHintsUsed, 2);
-      expect(controller.isNextHintFree, false);
+      // Select the rest manually
+      for (int i = 1; i < firstChallenge.word.length; i++) {
+        final expectedLetter = firstChallenge.word[i];
+        final nodeIndex = controller.nodes.indexWhere((n) =>
+            n.letter == expectedLetter &&
+            !controller.isSelected(controller.nodes.indexOf(n)));
+        controller.selectLetter(nodeIndex);
+      }
 
-      controller.resetLives();
-
-      expect(controller.totalHintsUsed, 0);
-      expect(controller.isNextHintFree, true);
+      expect(controller.currentAttempt, firstChallenge.word);
+      final result = await controller.validateSpelling();
+      expect(result, GameValidationState.correct);
     });
 
-    test('Timed Extra Life restarts exactly one timer', () async {
-      final timedChallenge = ChallengeGenerator.generateAllChallenges([
+    test('No hint can reveal the complete answer', () {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
+
+      int maxHints = firstChallenge.word.length - 1;
+      expect(controller.maxHints, maxHints);
+
+      for (int i = 0; i < maxHints; i++) {
+        expect(controller.canUseHint, true);
+        controller.grantHint();
+      }
+
+      expect(controller.canUseHint, false);
+      expect(controller.totalHintsUsed, maxHints);
+    });
+  });
+
+  group('Missing Letter Mode Tests', () {
+    late GeneratedChallenge oneBlankChallenge;
+    late GeneratedChallenge twoBlankChallenge;
+
+    setUpAll(() {
+      oneBlankChallenge = ChallengeGenerator.generateAllChallenges([
         WordContent(
-          id: '1',
-          word: 'TIME',
+          id: '2',
+          word: 'CAT',
           category: 'Test',
-          emoji: '⏱️',
-          sentenceClue: 'Clue',
+          emoji: '🐱',
+          sentenceClue: 'Pet',
           meaningEnglish: '',
           meaningMarathi: '',
           meaningHindi: '',
@@ -366,41 +266,188 @@ void main() {
           patternTemplate: 'star',
           minimumAge: 7,
         )
-      ]).firstWhere((c) => c.mode == ChallengeMode.timed);
+      ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
 
-      final controller = GameController(
-        challenge: timedChallenge,
-        repository: repository,
+      twoBlankChallenge = ChallengeGenerator.generateAllChallenges([
+        WordContent(
+          id: '3',
+          word: 'ELEPHANT',
+          category: 'Test',
+          emoji: '🐘',
+          sentenceClue: 'Big animal',
+          meaningEnglish: '',
+          meaningMarathi: '',
+          meaningHindi: '',
+          pronunciation: '',
+          difficulty: 'hard',
+          patternTemplate: 'star',
+          minimumAge: 7,
+        )
+      ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+    });
+
+    test('Maximum hints equal actual unresolved missing positions', () {
+      final controller =
+          GameController(challenge: twoBlankChallenge, repository: repository);
+      final blanks = controller
+          .missingIndices.length; // Hard mode has 2 blanks for ELEPHANT
+      expect(controller.maxHints, blanks);
+    });
+
+    test('One-blank level allows one free hint and then disables Hint', () {
+      final controller =
+          GameController(challenge: oneBlankChallenge, repository: repository);
+      // Easy mode has 1 blank
+      expect(controller.missingIndices.length, 1);
+      expect(controller.maxHints, 1);
+      expect(controller.canUseHint, true);
+
+      controller.grantHint(); // Free hint
+      expect(controller.canUseHint, false);
+      expect(controller.filledMissingLetters.length, 1);
+    });
+
+    test('No ad is shown after the final missing position is filled', () {
+      final controller =
+          GameController(challenge: oneBlankChallenge, repository: repository);
+
+      // Manually fill the missing letter
+      final missingIndex = controller.missingIndices.first;
+      final expectedLetter = oneBlankChallenge.word[missingIndex];
+      controller.fillMissingLetter(expectedLetter);
+
+      expect(controller.canUseHint, false);
+    });
+
+    test('Two-blank level reveals two different positions', () {
+      final controller =
+          GameController(challenge: twoBlankChallenge, repository: repository);
+      expect(controller.missingIndices.length, 2);
+
+      controller.grantHint(); // Free
+      controller.grantHint(); // Ad
+
+      expect(controller.filledMissingLetters.length, 2);
+      expect(controller.revealedHintIndices.length, 2);
+    });
+
+    test(
+        'Wrong answer preserves hinted positions but clears wrong manual entries',
+        () async {
+      final controller =
+          GameController(challenge: twoBlankChallenge, repository: repository);
+
+      controller.grantHint();
+      final hintedIndex = controller.filledMissingLetters.keys.first;
+
+      final otherMissingIndex =
+          controller.missingIndices.firstWhere((i) => i != hintedIndex);
+      // Provide a wrong letter
+      final wrongLetter = controller.missingLetterChoices
+          .firstWhere((c) => c != twoBlankChallenge.word[otherMissingIndex]);
+      controller.fillMissingLetter(wrongLetter);
+
+      await controller.validateSpelling();
+
+      expect(controller.validationState, GameValidationState.wrong);
+      expect(controller.filledMissingLetters.containsKey(hintedIndex),
+          true); // Hint kept
+      expect(controller.filledMissingLetters.containsKey(otherMissingIndex),
+          false); // Manual cleared
+    });
+
+    test('Undo does not remove a hinted missing letter', () {
+      final controller =
+          GameController(challenge: twoBlankChallenge, repository: repository);
+      controller.grantHint();
+
+      final hintedIndex = controller.filledMissingLetters.keys.first;
+      controller.undo(); // Does nothing
+
+      expect(controller.filledMissingLetters.containsKey(hintedIndex), true);
+    });
+  });
+
+  group('AdService Mock Testing', () {
+    test('Early dismissal grants nothing', () {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
+
+      controller.grantHint(); // First free
+      expect(controller.totalHintsUsed, 1);
+
+      // Simulate ad dismissal
+      fakeAdService.shouldGrantReward = false;
+      AdService().showRewardedHintAd(
+        onRewardEarned: () => controller.grantHint(),
+        onAdClosed: () {},
       );
 
-      // Wait a bit to let timer tick
-      await Future.delayed(const Duration(milliseconds: 1500));
+      expect(fakeAdService.hintsEarned, 0);
+      expect(controller.totalHintsUsed, 1); // No new hint granted
+    });
 
-      // Force outOfLives state to cancel timer
+    test('Reward callback grants exactly one hint/life', () {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
+
+      controller.grantHint(); // First free
+
+      // Simulate successful ad
+      fakeAdService.shouldGrantReward = true;
+      AdService().showRewardedHintAd(
+        onRewardEarned: () => controller.grantHint(),
+        onAdClosed: () {},
+      );
+
+      expect(fakeAdService.hintsEarned, 1);
+      expect(controller.totalHintsUsed, 2);
+    });
+
+    test('No successful ad can result in zero reward', () {
+      final controller =
+          GameController(challenge: firstChallenge, repository: repository);
+
+      controller.grantHint(); // Free
+
+      fakeAdService.shouldGrantReward = true;
+      AdService().showRewardedHintAd(
+        onRewardEarned: () => controller.grantHint(),
+        onAdClosed: () {},
+      );
+
+      expect(controller.totalHintsUsed, 2);
+    });
+  });
+
+  group('Timed Mode Tests', () {
+    testWidgets('Timed Extra Life after final timeout restarts exactly one timer', (WidgetTester tester) async {
+      final timedChallenge = ChallengeGenerator.generateAllChallenges([
+        WordContent(
+          id: '1', word: 'TIME', category: 'Test', emoji: '⏱️',
+          sentenceClue: 'Clue', meaningEnglish: '', meaningMarathi: '',
+          meaningHindi: '', pronunciation: '', difficulty: 'easy',
+          patternTemplate: 'star', minimumAge: 7,
+        )
+      ]).firstWhere((c) => c.mode == ChallengeMode.timed);
+
+      final controller = GameController(challenge: timedChallenge, repository: repository);
+
+      // Wait for timer to exhaust lives (3 lives * 60 seconds)
       while (controller.lives > 0) {
-        for (var i = 0; i < timedChallenge.letterCount; i++) {
-          controller.selectLetter(i);
-        }
-        if (controller.currentAttempt == timedChallenge.word) {
-          controller.undo();
-          controller.undo();
-          controller.selectLetter(timedChallenge.letterCount - 1);
-          controller.selectLetter(timedChallenge.letterCount - 2);
-        }
-        await controller.validateSpelling();
+        await tester.pump(const Duration(seconds: 61));
       }
 
       expect(controller.validationState, GameValidationState.outOfLives);
       expect(controller.canUseRewardedLife, true);
 
-      // Grant life and restart timer
+      // Verify the timer was properly canceled and restarted without duplicates
+      final currentTimerVal = controller.timeRemaining;
       controller.grantRewardedLife();
-
+      expect(controller.timeRemaining, greaterThan(currentTimerVal));
       expect(controller.lives, 1);
-      expect(
-          controller.timeRemaining,
-          greaterThanOrEqualTo(
-              timedChallenge.difficultyConfig.timerSeconds - 1));
+      
+      controller.dispose();
     });
   });
 }

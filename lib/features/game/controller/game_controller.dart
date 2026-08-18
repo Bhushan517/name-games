@@ -37,9 +37,9 @@ class GameController extends ChangeNotifier {
   final Random _random;
 
   late List<LetterNode> _nodes;
-  final List<int> _selectedIndices = <int>[];
+  final Set<int> _fixedHintNodeIds = <int>{};
+  final List<int> _manualSelectedNodeIds = <int>[];
   late int _lives;
-  final Set<int> _revealedHintIndices = <int>{};
   bool _freeHintUsedForScoring = false;
   int _rewardedLivesUsed = 0;
   bool _isCompleted = false;
@@ -49,6 +49,7 @@ class GameController extends ChangeNotifier {
   final List<int> _missingIndices = <int>[];
   final List<String> _missingLetterChoices = <String>[];
   final Map<int, String> _filledMissingLetters = <int, String>{};
+  final Set<int> _hintedMissingIndices = <int>{};
 
   // --- Memory Mode State ---
   bool _isMemoryRevealed = true;
@@ -62,14 +63,49 @@ class GameController extends ChangeNotifier {
 
   // --- Getters ---
   List<LetterNode> get nodes => List.unmodifiable(_nodes);
-  List<int> get selectedIndices => List.unmodifiable(_selectedIndices);
-  Set<int> get revealedHintIndices => Set.unmodifiable(_revealedHintIndices);
+
+  List<int> get activeNodeIds {
+    final List<int> result = [];
+    int manualIndex = 0;
+    for (int i = 0; i < word.length; i++) {
+      if (_fixedHintNodeIds.contains(i)) {
+        result.add(i);
+      } else if (manualIndex < _manualSelectedNodeIds.length) {
+        result.add(_manualSelectedNodeIds[manualIndex]);
+        manualIndex++;
+      } else {
+        break;
+      }
+    }
+    return result;
+  }
+
+  List<int> get selectedIndices =>
+      activeNodeIds.map((id) => _nodes.indexWhere((n) => n.id == id)).toList();
+
+  Set<int> get revealedHintIndices => mode == ChallengeMode.missingLetter
+      ? Set.unmodifiable(_hintedMissingIndices)
+      : Set.unmodifiable(_fixedHintNodeIds);
   int get lives => _lives;
-  bool get isNextHintFree => _revealedHintIndices.isEmpty;
-  bool get canUseHint =>
-      _revealedHintIndices.length < (letterCount - 1) && !_isCompleted;
-  int get totalHintsUsed => _revealedHintIndices.length;
-  int get maxHints => letterCount - 1;
+  bool get isNextHintFree => revealedHintIndices.isEmpty;
+
+  bool get canUseHint {
+    if (_isCompleted) return false;
+    if (mode == ChallengeMode.missingLetter) {
+      return _hintedMissingIndices.length < _missingIndices.length &&
+          _filledMissingLetters.length < _missingIndices.length;
+    }
+    return _fixedHintNodeIds.length < (letterCount - 1);
+  }
+
+  int get totalHintsUsed => revealedHintIndices.length;
+  int get maxHints {
+    if (mode == ChallengeMode.missingLetter) {
+      return _missingIndices.length;
+    }
+    return letterCount - 1;
+  }
+
   int get rewardedLivesUsed => _rewardedLivesUsed;
   bool get isCompleted => _isCompleted;
   GameValidationState get validationState => _validationState;
@@ -105,10 +141,14 @@ class GameController extends ChangeNotifier {
       }
       return buffer.toString();
     }
-    return _selectedIndices.map((i) => _nodes[i].letter).join();
+    return activeNodeIds.map((id) => word[id]).join();
   }
 
-  bool isSelected(int nodeIndex) => _selectedIndices.contains(nodeIndex);
+  bool isSelected(int nodeIndex) {
+    final id = _nodes[nodeIndex].id;
+    return _fixedHintNodeIds.contains(id) ||
+        _manualSelectedNodeIds.contains(id);
+  }
 
   void _initGame() {
     _lives = challenge.difficultyConfig.lives;
@@ -140,6 +180,7 @@ class GameController extends ChangeNotifier {
     _missingIndices.clear();
     _filledMissingLetters.clear();
     _missingLetterChoices.clear();
+    _hintedMissingIndices.clear();
 
     final countToHide = min(
       challenge.difficultyConfig.missingLetterCount,
@@ -181,10 +222,17 @@ class GameController extends ChangeNotifier {
 
   void clearLastMissingLetter() {
     if (_isCompleted || _filledMissingLetters.isEmpty) return;
-    final keys = _filledMissingLetters.keys.toList()..sort();
-    _filledMissingLetters.remove(keys.last);
-    _validationState = GameValidationState.initial;
-    notifyListeners();
+
+    // Find the last filled index that is NOT a hinted fixed index
+    final manualKeys = _filledMissingLetters.keys
+        .where((k) => !_hintedMissingIndices.contains(k))
+        .toList()
+      ..sort();
+    if (manualKeys.isNotEmpty) {
+      _filledMissingLetters.remove(manualKeys.last);
+      _validationState = GameValidationState.initial;
+      notifyListeners();
+    }
   }
 
   // --- Memory Mode Setup ---
@@ -206,7 +254,7 @@ class GameController extends ChangeNotifier {
   void replayMemoryPreview() {
     if (_isCompleted) return;
     _freeHintUsedForScoring = true; // small penalty for replay
-    _selectedIndices.clear();
+    _manualSelectedNodeIds.clear();
     _startMemoryPreview();
     notifyListeners();
   }
@@ -240,7 +288,7 @@ class GameController extends ChangeNotifier {
     if (_isCompleted) return;
     HapticService.error();
     _lives--;
-    _selectedIndices.clear();
+    _manualSelectedNodeIds.clear();
     if (_lives <= 0) {
       _validationState = GameValidationState.outOfLives;
     } else {
@@ -263,7 +311,7 @@ class GameController extends ChangeNotifier {
   void selectLetter(int nodeIndex) {
     if (_isCompleted || isSelected(nodeIndex)) return;
     HapticService.tap();
-    _selectedIndices.add(nodeIndex);
+    _manualSelectedNodeIds.add(_nodes[nodeIndex].id);
     _validationState = GameValidationState.initial;
     notifyListeners();
   }
@@ -273,8 +321,8 @@ class GameController extends ChangeNotifier {
       clearLastMissingLetter();
       return;
     }
-    if (_selectedIndices.isNotEmpty && !_isCompleted) {
-      _selectedIndices.removeLast();
+    if (_manualSelectedNodeIds.isNotEmpty && !_isCompleted) {
+      _manualSelectedNodeIds.removeLast();
       _validationState = GameValidationState.initial;
       notifyListeners();
     }
@@ -285,49 +333,43 @@ class GameController extends ChangeNotifier {
 
     if (mode == ChallengeMode.missingLetter) {
       for (final idx in _missingIndices) {
-        if (_filledMissingLetters[idx] != word[idx]) {
+        if (!_hintedMissingIndices.contains(idx) &&
+            _filledMissingLetters[idx] != word[idx]) {
           _filledMissingLetters[idx] = word[idx];
-          _revealedHintIndices.add(idx);
+          _hintedMissingIndices.add(idx);
           break;
         }
       }
     } else {
-      int indexToReveal = -1;
+      int hintTargetIndex = -1;
+      final currentActiveIds = activeNodeIds;
+
       for (int i = 0; i < word.length; i++) {
-        if (i < _selectedIndices.length) {
-          if (_nodes[_selectedIndices[i]].letter != word[i]) {
-            indexToReveal = i;
+        if (i < currentActiveIds.length) {
+          final idAtSlot = currentActiveIds[i];
+          final letterAtSlot = word[idAtSlot];
+          if (letterAtSlot != word[i]) {
+            hintTargetIndex = i;
             break;
           }
         } else {
-          indexToReveal = i;
+          hintTargetIndex = i;
           break;
         }
       }
 
-      if (indexToReveal != -1) {
-        _revealedHintIndices.add(indexToReveal);
+      if (hintTargetIndex != -1) {
+        _fixedHintNodeIds.add(hintTargetIndex);
+        _manualSelectedNodeIds.remove(hintTargetIndex);
 
-        if (_selectedIndices.length > indexToReveal) {
-          _selectedIndices.removeRange(indexToReveal, _selectedIndices.length);
-        }
-
-        int nodeIndexInNodes = -1;
-        for (int i = 0; i < _nodes.length; i++) {
-          if (_nodes[i].letter == word[indexToReveal] &&
-              !_selectedIndices.contains(i)) {
-            nodeIndexInNodes = i;
-            break;
-          }
-        }
-
-        if (nodeIndexInNodes != -1) {
-          _selectedIndices.add(nodeIndexInNodes);
+        while ((_fixedHintNodeIds.length + _manualSelectedNodeIds.length) >
+            word.length) {
+          _manualSelectedNodeIds.removeLast();
         }
       }
     }
 
-    if (_revealedHintIndices.length == 1) {
+    if (revealedHintIndices.length == 1) {
       _freeHintUsedForScoring = true;
     }
 
@@ -374,7 +416,7 @@ class GameController extends ChangeNotifier {
         return _validationState;
       }
     } else {
-      if (_selectedIndices.length < letterCount) {
+      if (activeNodeIds.length < letterCount) {
         _validationState = GameValidationState.incomplete;
         notifyListeners();
         return _validationState;
@@ -404,9 +446,14 @@ class GameController extends ChangeNotifier {
     _lives--;
 
     if (mode == ChallengeMode.missingLetter) {
-      _filledMissingLetters.clear();
+      final manualKeys = _filledMissingLetters.keys
+          .where((k) => !_hintedMissingIndices.contains(k))
+          .toList();
+      for (final key in manualKeys) {
+        _filledMissingLetters.remove(key);
+      }
     } else {
-      _selectedIndices.clear();
+      _manualSelectedNodeIds.clear();
       _nodes.shuffle(_random);
     }
 
@@ -422,10 +469,11 @@ class GameController extends ChangeNotifier {
 
   void resetLives() {
     _lives = challenge.difficultyConfig.lives;
-    _revealedHintIndices.clear();
+    _fixedHintNodeIds.clear();
+    _hintedMissingIndices.clear();
     _freeHintUsedForScoring = false;
     _rewardedLivesUsed = 0;
-    _selectedIndices.clear();
+    _manualSelectedNodeIds.clear();
     _filledMissingLetters.clear();
     _validationState = GameValidationState.initial;
     if (mode == ChallengeMode.timed) {

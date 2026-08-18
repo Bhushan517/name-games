@@ -101,6 +101,13 @@ class _GameScreenState extends State<GameScreen>
                   onRewardEarned: () {
                     _controller.grantRewardedLife();
                   },
+                  onAdClosed: () {
+                    if (mounted &&
+                        _controller.validationState ==
+                            GameValidationState.outOfLives) {
+                      _showOutOfLivesDialogIfNeeded();
+                    }
+                  },
                 );
               },
               icon: const Icon(Icons.play_circle_outline_rounded, size: 16),
@@ -163,9 +170,15 @@ class _GameScreenState extends State<GameScreen>
           onContinue: () {
             Navigator.pop(context); // Close dialog
             if (!widget.isDailyMode) {
-              AdService().recordCampaignCompletionAndShowInterstitialIfNeeded();
+              AdService().recordCampaignCompletionAndShowInterstitialIfNeeded(
+                onContinue: () {
+                  if (mounted)
+                    Navigator.pop(context, stars); // Return to Level Selection
+                },
+              );
+            } else {
+              Navigator.pop(context, stars); // Return to Level Selection
             }
-            Navigator.pop(context, stars); // Return to Level Selection
           },
         ),
       );
@@ -317,17 +330,14 @@ class _GameScreenState extends State<GameScreen>
                           onRewardEarned: () {
                             _controller.grantHint();
                           },
+                          onAdClosed: () {
+                            if (mounted) {
+                              setState(() {
+                                _isAdLoading = false;
+                              });
+                            }
+                          },
                         );
-                        // AdService shows the ad immediately. The ad overlay blocks double taps,
-                        // but we clear the loading flag after a short delay or when it finishes.
-                        // Actually, AdService sets its internal flag immediately so next click is blocked.
-                        Future.delayed(const Duration(milliseconds: 500), () {
-                          if (mounted) {
-                            setState(() {
-                              _isAdLoading = false;
-                            });
-                          }
-                        });
                       }
                     },
                   ),
