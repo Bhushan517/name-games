@@ -172,8 +172,9 @@ class _GameScreenState extends State<GameScreen>
             if (!widget.isDailyMode) {
               AdService().recordCampaignCompletionAndShowInterstitialIfNeeded(
                 onContinue: () {
-                  if (mounted)
+                  if (mounted) {
                     Navigator.pop(context, stars); // Return to Level Selection
+                  }
                 },
               );
             } else {

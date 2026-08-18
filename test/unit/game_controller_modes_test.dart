@@ -203,7 +203,7 @@ void main() {
 
       // Select only one letter
       controller.selectLetter(0);
-      expect(controller.selectedIndices.length, 1);
+      expect(controller.selectedIndices.where((e) => e != null).length, 1);
 
       final state = await controller.validateSpelling();
       expect(state, GameValidationState.incomplete);

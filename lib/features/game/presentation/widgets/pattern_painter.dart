@@ -11,16 +11,17 @@ class PatternPainter extends CustomPainter {
   });
 
   final List<LetterNode> nodes;
-  final List<int> selectedIndices;
+  final List<int?> selectedIndices;
   final Size renderArea;
   final Color lineColor;
   final bool isPatternClosed;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (selectedIndices.isEmpty) return;
+    final validIndices = selectedIndices.whereType<int>().toList();
+    if (validIndices.isEmpty) return;
 
-    final points = selectedIndices
+    final points = validIndices
         .map((i) => Offset(
               nodes[i].position.dx * renderArea.width,
               nodes[i].position.dy * renderArea.height,
@@ -59,8 +60,12 @@ class PatternPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant PatternPainter oldDelegate) =>
-      oldDelegate.selectedIndices.length != selectedIndices.length ||
-      oldDelegate.isPatternClosed != isPatternClosed ||
-      oldDelegate.nodes != nodes;
+  bool shouldRepaint(covariant PatternPainter oldDelegate) {
+    final oldValidCount =
+        oldDelegate.selectedIndices.where((e) => e != null).length;
+    final newValidCount = selectedIndices.where((e) => e != null).length;
+    return oldValidCount != newValidCount ||
+        oldDelegate.isPatternClosed != isPatternClosed ||
+        oldDelegate.nodes != nodes;
+  }
 }

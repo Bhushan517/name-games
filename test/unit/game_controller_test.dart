@@ -119,62 +119,73 @@ void main() {
       expect(controller.revealedHintIndices.contains(firstHint), true);
     });
 
-    test(
-        'Wrong answer preserves every earned hint and clears only manual selections',
-        () async {
+    test('Sparse hints stay visible after wrong answers and undo', () async {
       final controller =
           GameController(challenge: firstChallenge, repository: repository);
 
-      controller.grantHint();
-      controller.grantHint();
-      expect(controller.revealedHintIndices.length, 2);
+      // 1. Manually fill positions 0 and 1 correctly.
+      final char0 = firstChallenge.word[0];
+      final node0 = controller.nodes.indexWhere((n) => n.letter == char0);
+      controller.selectLetter(node0);
 
-      // Select manually some incorrect letters
+      final char1 = firstChallenge.word[1];
+      final node1 = controller.nodes.indexWhere((n) =>
+          n.letter == char1 &&
+          !controller.isSelected(controller.nodes.indexOf(n)));
+      controller.selectLetter(node1);
+
+      // 2. Request the first hint so it appears at position 2.
+      controller.grantHint();
+      expect(controller.revealedHintIndices.contains(2), true);
+
+      // 3. Fill the rest incorrectly and submit.
       for (int i = 0; i < firstChallenge.letterCount; i++) {
         if (!controller.isSelected(i)) {
           controller.selectLetter(i);
         }
       }
-      
-      // Ensure it's the wrong answer by swapping the last two selections
+
+      // Ensure wrong answer by swapping last two
       if (controller.currentAttempt == firstChallenge.word) {
         controller.undo();
         controller.undo();
-        final remaining = List.generate(firstChallenge.letterCount, (i) => i).where((i) => !controller.isSelected(i)).toList();
+        final remaining = List.generate(firstChallenge.letterCount, (i) => i)
+            .where((i) => !controller.isSelected(i))
+            .toList();
         controller.selectLetter(remaining[1]);
         controller.selectLetter(remaining[0]);
       }
 
       await controller.validateSpelling();
-
       expect(controller.validationState, GameValidationState.wrong);
-      expect(controller.revealedHintIndices.length, 2); // Hints preserved
-      expect(controller.selectedIndices.length, 2); // Only hints remain active
-      expect(controller.currentAttempt.length, 2);
-    });
 
-    test('Undo removes only a manual letter and cannot remove a hinted letter',
-        () {
-      final controller =
-          GameController(challenge: firstChallenge, repository: repository);
+      // 4. Confirm manual positions are cleared.
+      // 5. Confirm the position-2 hint is still visible and fixed.
+      expect(controller.selectedIndices[2] != null, true);
+      expect(controller.selectedIndices[0], isNull);
 
-      controller.grantHint();
-      expect(controller.revealedHintIndices.length, 1);
+      // 6. Confirm currentAttempt represents gaps correctly
+      final attempt = controller.currentAttempt;
+      expect(attempt[0], '_');
+      expect(attempt[1], '_');
+      expect(attempt[2], firstChallenge.word[2]);
 
-      // Select a manual letter
-      final firstUnselected = controller.nodes.indexWhere(
-          (n) => !controller.isSelected(controller.nodes.indexOf(n)));
-      controller.selectLetter(firstUnselected);
-      expect(controller.selectedIndices.length, 2);
-
-      // Undo should remove the manual letter
+      // 7. Confirm Undo cannot remove that hint.
       controller.undo();
-      expect(controller.selectedIndices.length, 1);
+      expect(controller.selectedIndices[2] != null, true);
 
-      // Undo should do nothing against the hint
-      controller.undo();
-      expect(controller.selectedIndices.length, 1);
-      expect(controller.revealedHintIndices.length, 1);
+      // 8. Confirm completing the remaining positions validates the correct word.
+      for (int i = 0; i < firstChallenge.word.length; i++) {
+        if (i == 2) continue; // skip hinted
+        final expected = firstChallenge.word[i];
+        final n = controller.nodes.indexWhere((n) =>
+            n.letter == expected &&
+            !controller.isSelected(controller.nodes.indexOf(n)));
+        controller.selectLetter(n);
+      }
+      expect(controller.currentAttempt, firstChallenge.word);
+      final result = await controller.validateSpelling();
+      expect(result, GameValidationState.correct);
     });
 
     test('Duplicate-letter words use different correct nodes', () {
@@ -205,8 +216,8 @@ void main() {
 
       expect(controller.selectedIndices[1],
           isNot(equals(controller.selectedIndices[2])));
-      expect(controller.nodes[controller.selectedIndices[1]].letter, 'P');
-      expect(controller.nodes[controller.selectedIndices[2]].letter, 'P');
+        expect(controller.nodes[controller.selectedIndices[1]!].letter, 'P');
+        expect(controller.nodes[controller.selectedIndices[2]!].letter, 'P');
     });
 
     test('Hints and manual selections assemble the correct final word',
@@ -294,28 +305,72 @@ void main() {
       expect(controller.maxHints, blanks);
     });
 
-    test('One-blank level allows one free hint and then disables Hint', () {
+    test(
+        'One blank manually filled incorrectly -> Hint remains enabled and fixes it',
+        () {
       final controller =
           GameController(challenge: oneBlankChallenge, repository: repository);
-      // Easy mode has 1 blank
-      expect(controller.missingIndices.length, 1);
-      expect(controller.maxHints, 1);
+      final missingIndex = controller.missingIndices.first;
+
+      final wrongLetter = controller.missingLetterChoices
+          .firstWhere((c) => c != oneBlankChallenge.word[missingIndex]);
+      controller.fillMissingLetter(wrongLetter);
+
+      // Hint is still enabled because it's incorrect
       expect(controller.canUseHint, true);
 
-      controller.grantHint(); // Free hint
+      // Granting hint fixes it
+      controller.grantHint();
+      expect(controller.filledMissingLetters[missingIndex],
+          oneBlankChallenge.word[missingIndex]);
+      expect(controller.revealedHintIndices.contains(missingIndex), true);
       expect(controller.canUseHint, false);
-      expect(controller.filledMissingLetters.length, 1);
+
+      // Undo does not remove the hinted letter
+      controller.undo();
+      expect(controller.filledMissingLetters[missingIndex],
+          oneBlankChallenge.word[missingIndex]);
     });
 
-    test('No ad is shown after the final missing position is filled', () {
+    test('One blank manually filled correctly -> Hint is disabled', () {
       final controller =
           GameController(challenge: oneBlankChallenge, repository: repository);
-
-      // Manually fill the missing letter
       final missingIndex = controller.missingIndices.first;
-      final expectedLetter = oneBlankChallenge.word[missingIndex];
-      controller.fillMissingLetter(expectedLetter);
 
+      final correctLetter = oneBlankChallenge.word[missingIndex];
+      controller.fillMissingLetter(correctLetter);
+
+      expect(controller.canUseHint, false);
+    });
+
+    test(
+        'Two blanks with one correct and one wrong -> Hint fixes only the wrong position',
+        () {
+      final controller =
+          GameController(challenge: twoBlankChallenge, repository: repository);
+      final missingIndex1 = controller.missingIndices[0];
+      final missingIndex2 = controller.missingIndices[1];
+
+      final correctLetter = twoBlankChallenge.word[missingIndex1];
+      final wrongLetter = controller.missingLetterChoices
+          .firstWhere((c) => c != twoBlankChallenge.word[missingIndex2]);
+
+      // First fill correctly, second wrong
+      controller.fillMissingLetter(correctLetter);
+      controller.fillMissingLetter(wrongLetter);
+
+      // Hint is enabled because there's a wrong one
+      expect(controller.canUseHint, true);
+
+      controller.grantHint();
+
+      // It should fix the wrong one (missingIndex2)
+      expect(controller.filledMissingLetters[missingIndex2],
+          twoBlankChallenge.word[missingIndex2]);
+      expect(controller.revealedHintIndices.contains(missingIndex2), true);
+
+      // The correctly filled one remains unhinted (so it can be undone)
+      expect(controller.revealedHintIndices.contains(missingIndex1), false);
       expect(controller.canUseHint, false);
     });
 
@@ -421,33 +476,57 @@ void main() {
   });
 
   group('Timed Mode Tests', () {
-    testWidgets('Timed Extra Life after final timeout restarts exactly one timer', (WidgetTester tester) async {
+    testWidgets(
+        'Timed Extra Life after final timeout restarts exactly one timer',
+        (WidgetTester tester) async {
       final timedChallenge = ChallengeGenerator.generateAllChallenges([
         WordContent(
-          id: '1', word: 'TIME', category: 'Test', emoji: '⏱️',
-          sentenceClue: 'Clue', meaningEnglish: '', meaningMarathi: '',
-          meaningHindi: '', pronunciation: '', difficulty: 'easy',
-          patternTemplate: 'star', minimumAge: 7,
+          id: '1',
+          word: 'TIME',
+          category: 'Test',
+          emoji: '⏱️',
+          sentenceClue: 'Clue',
+          meaningEnglish: '',
+          meaningMarathi: '',
+          meaningHindi: '',
+          pronunciation: '',
+          difficulty: 'easy',
+          patternTemplate: 'star',
+          minimumAge: 7,
         )
       ]).firstWhere((c) => c.mode == ChallengeMode.timed);
 
-      final controller = GameController(challenge: timedChallenge, repository: repository);
+      final controller =
+          GameController(challenge: timedChallenge, repository: repository);
 
-      // Wait for timer to exhaust lives (3 lives * 60 seconds)
-      while (controller.lives > 0) {
-        await tester.pump(const Duration(seconds: 61));
+      // Wait for timer to exhaust lives sequentially
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 60; j++) {
+          await tester.pump(const Duration(seconds: 1));
+        }
       }
 
       expect(controller.validationState, GameValidationState.outOfLives);
       expect(controller.canUseRewardedLife, true);
 
-      // Verify the timer was properly canceled and restarted without duplicates
+      // Verify the timer was properly canceled
       final currentTimerVal = controller.timeRemaining;
+      await tester.pump(const Duration(seconds: 1));
+      expect(controller.timeRemaining, currentTimerVal);
+
       controller.grantRewardedLife();
-      expect(controller.timeRemaining, greaterThan(currentTimerVal));
+
+      final expectedTimer = timedChallenge.difficultyConfig.timerSeconds;
+      expect(controller.timeRemaining, expectedTimer);
       expect(controller.lives, 1);
-      
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(controller.timeRemaining, expectedTimer - 1);
+
       controller.dispose();
+
+      // Attempting to pump after dispose should not throw pending timer exceptions
+      await tester.pump(const Duration(seconds: 1));
     });
   });
 }

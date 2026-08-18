@@ -13,7 +13,7 @@ class WordSlots extends StatelessWidget {
   });
 
   final int letterCount;
-  final List<int> selectedIndices;
+  final List<int?> selectedIndices;
   final List<LetterNode> nodes;
   final Color themeColor;
   final Set<int> revealedHintIndices;
@@ -23,7 +23,8 @@ class WordSlots extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(letterCount, (index) {
-        final hasLetter = index < selectedIndices.length;
+        final nodeIndex = selectedIndices[index];
+        final hasLetter = nodeIndex != null;
         final isHinted = hasLetter && revealedHintIndices.contains(index);
 
         return AnimatedContainer(
@@ -46,7 +47,7 @@ class WordSlots extends StatelessWidget {
             ),
           ),
           child: Text(
-            hasLetter ? nodes[selectedIndices[index]].letter : '•',
+            hasLetter ? nodes[nodeIndex].letter : '•',
             style: TextStyle(
               color: hasLetter
                   ? (isHinted ? AppColors.gold : themeColor)
