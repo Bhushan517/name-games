@@ -74,6 +74,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   bool _isOutOfLivesDialogVisible = false;
+  bool _isAdLoading = false;
 
   void _showOutOfLivesDialogIfNeeded() {
     if (_isOutOfLivesDialogVisible || !mounted) return;
@@ -292,27 +293,42 @@ class _GameScreenState extends State<GameScreen>
                   // --- Clue Card ---
                   ClueCard(
                     level: widget.challenge.wordContent,
-                    hintUsed: _controller.hintUsed,
-                    hasSelectedLetters:
-                        _controller.selectedIndices.isNotEmpty ||
-                            _controller.filledMissingLetters.isNotEmpty,
-                    onHintTap: _controller.useHint,
-                    canUseRewardedHint: _controller.canUseRewardedHint &&
-                        AdService().isRewardedHintAdReady,
-                    onRewardedHintTap: () {
-                      if (!AdService().isRewardedHintAdReady) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  'Ad is currently unavailable. Please try again later.')),
+                    isNextHintFree: _controller.isNextHintFree,
+                    canUseHint: _controller.canUseHint,
+                    totalHintsUsed: _controller.totalHintsUsed,
+                    maxHints: _controller.maxHints,
+                    onHintTap: () {
+                      if (_isAdLoading) return;
+
+                      if (_controller.isNextHintFree) {
+                        _controller.grantHint();
+                      } else {
+                        if (!AdService().isRewardedHintAdReady) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Ad is currently unavailable. Please try again later.')),
+                          );
+                          return;
+                        }
+
+                        _isAdLoading = true;
+                        AdService().showRewardedHintAd(
+                          onRewardEarned: () {
+                            _controller.grantHint();
+                          },
                         );
-                        return;
+                        // AdService shows the ad immediately. The ad overlay blocks double taps,
+                        // but we clear the loading flag after a short delay or when it finishes.
+                        // Actually, AdService sets its internal flag immediately so next click is blocked.
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          if (mounted) {
+                            setState(() {
+                              _isAdLoading = false;
+                            });
+                          }
+                        });
                       }
-                      AdService().showRewardedHintAd(
-                        onRewardEarned: () {
-                          _controller.grantRewardedHint();
-                        },
-                      );
                     },
                   ),
 
@@ -325,8 +341,7 @@ class _GameScreenState extends State<GameScreen>
                       selectedIndices: _controller.selectedIndices,
                       nodes: _controller.nodes,
                       themeColor: themeColor,
-                      hintUsed: _controller.hintUsed,
-                      firstLetter: widget.challenge.word[0],
+                      revealedHintIndices: _controller.revealedHintIndices,
                     ),
 
                   // --- Interactive Playfield ---

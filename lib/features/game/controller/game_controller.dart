@@ -39,8 +39,8 @@ class GameController extends ChangeNotifier {
   late List<LetterNode> _nodes;
   final List<int> _selectedIndices = <int>[];
   late int _lives;
-  bool _hintUsed = false;
-  int _rewardedHintsUsed = 0;
+  final Set<int> _revealedHintIndices = <int>{};
+  bool _freeHintUsedForScoring = false;
   int _rewardedLivesUsed = 0;
   bool _isCompleted = false;
   GameValidationState _validationState = GameValidationState.initial;
@@ -63,9 +63,13 @@ class GameController extends ChangeNotifier {
   // --- Getters ---
   List<LetterNode> get nodes => List.unmodifiable(_nodes);
   List<int> get selectedIndices => List.unmodifiable(_selectedIndices);
+  Set<int> get revealedHintIndices => Set.unmodifiable(_revealedHintIndices);
   int get lives => _lives;
-  bool get hintUsed => _hintUsed;
-  int get rewardedHintsUsed => _rewardedHintsUsed;
+  bool get isNextHintFree => _revealedHintIndices.isEmpty;
+  bool get canUseHint =>
+      _revealedHintIndices.length < (letterCount - 1) && !_isCompleted;
+  int get totalHintsUsed => _revealedHintIndices.length;
+  int get maxHints => letterCount - 1;
   int get rewardedLivesUsed => _rewardedLivesUsed;
   bool get isCompleted => _isCompleted;
   GameValidationState get validationState => _validationState;
@@ -201,7 +205,7 @@ class GameController extends ChangeNotifier {
 
   void replayMemoryPreview() {
     if (_isCompleted) return;
-    _hintUsed = true; // small penalty for replay
+    _freeHintUsedForScoring = true; // small penalty for replay
     _selectedIndices.clear();
     _startMemoryPreview();
     notifyListeners();
@@ -276,22 +280,59 @@ class GameController extends ChangeNotifier {
     }
   }
 
-  void useHint() {
-    if (!_hintUsed && challenge.difficultyConfig.allowFirstLetterHint) {
-      _hintUsed = true;
-      notifyListeners();
-    }
-  }
+  void grantHint() {
+    if (!canUseHint) return;
 
-  bool get canUseRewardedHint => _rewardedHintsUsed < 3;
+    if (mode == ChallengeMode.missingLetter) {
+      for (final idx in _missingIndices) {
+        if (_filledMissingLetters[idx] != word[idx]) {
+          _filledMissingLetters[idx] = word[idx];
+          _revealedHintIndices.add(idx);
+          break;
+        }
+      }
+    } else {
+      int indexToReveal = -1;
+      for (int i = 0; i < word.length; i++) {
+        if (i < _selectedIndices.length) {
+          if (_nodes[_selectedIndices[i]].letter != word[i]) {
+            indexToReveal = i;
+            break;
+          }
+        } else {
+          indexToReveal = i;
+          break;
+        }
+      }
 
-  void grantRewardedHint() {
-    if (canUseRewardedHint) {
-      _rewardedHintsUsed++;
-      // A rewarded hint acts as a regular hint to the UI, but doesn't deduct stars.
-      _hintUsed = true;
-      notifyListeners();
+      if (indexToReveal != -1) {
+        _revealedHintIndices.add(indexToReveal);
+
+        if (_selectedIndices.length > indexToReveal) {
+          _selectedIndices.removeRange(indexToReveal, _selectedIndices.length);
+        }
+
+        int nodeIndexInNodes = -1;
+        for (int i = 0; i < _nodes.length; i++) {
+          if (_nodes[i].letter == word[indexToReveal] &&
+              !_selectedIndices.contains(i)) {
+            nodeIndexInNodes = i;
+            break;
+          }
+        }
+
+        if (nodeIndexInNodes != -1) {
+          _selectedIndices.add(nodeIndexInNodes);
+        }
+      }
     }
+
+    if (_revealedHintIndices.length == 1) {
+      _freeHintUsedForScoring = true;
+    }
+
+    _validationState = GameValidationState.initial;
+    notifyListeners();
   }
 
   bool get canUseRewardedLife => _rewardedLivesUsed < 2;
@@ -306,10 +347,13 @@ class GameController extends ChangeNotifier {
         _validationState = GameValidationState.initial;
       }
 
-      // For Timed mode, we just need to ensure the timer starts again
-      // without resetting the current progress.
+      // For Timed mode, ensure timer restarts if it was cancelled
       if (mode == ChallengeMode.timed) {
-        resumeTimer();
+        if (_timedChallengeTimer == null || !_timedChallengeTimer!.isActive) {
+          _startTimedMode();
+        } else {
+          resumeTimer();
+        }
       }
 
       notifyListeners();
@@ -317,10 +361,7 @@ class GameController extends ChangeNotifier {
   }
 
   int calculateStars() {
-    // If the hint was exclusively given via an ad (i.e. allowFirstLetterHint is false,
-    // or they watched an ad but never clicked the regular hint first),
-    // we do not deduct stars. But to be safe, if _rewardedHintsUsed > 0 we can forgive the _hintUsed flag.
-    if (_hintUsed && _rewardedHintsUsed == 0) return 2;
+    if (_freeHintUsedForScoring) return 2;
     if (_lives == challenge.difficultyConfig.lives) return 3;
     return 2;
   }
@@ -381,9 +422,9 @@ class GameController extends ChangeNotifier {
 
   void resetLives() {
     _lives = challenge.difficultyConfig.lives;
-    _rewardedHintsUsed = 0;
+    _revealedHintIndices.clear();
+    _freeHintUsedForScoring = false;
     _rewardedLivesUsed = 0;
-    _hintUsed = false;
     _selectedIndices.clear();
     _filledMissingLetters.clear();
     _validationState = GameValidationState.initial;

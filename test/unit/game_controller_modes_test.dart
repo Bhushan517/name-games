@@ -133,7 +133,7 @@ void main() {
       expect(controller.isMemoryRevealed, isTrue);
 
       controller.replayMemoryPreview();
-      expect(controller.hintUsed, isTrue);
+      expect(controller.calculateStars(), 2);
     });
 
     test('Mode 5: Timed Challenge initializes timer and handles pause/resume',

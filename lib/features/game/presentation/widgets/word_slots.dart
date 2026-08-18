@@ -9,16 +9,14 @@ class WordSlots extends StatelessWidget {
     required this.selectedIndices,
     required this.nodes,
     required this.themeColor,
-    required this.hintUsed,
-    required this.firstLetter,
+    required this.revealedHintIndices,
   });
 
   final int letterCount;
   final List<int> selectedIndices;
   final List<LetterNode> nodes;
   final Color themeColor;
-  final bool hintUsed;
-  final String firstLetter;
+  final Set<int> revealedHintIndices;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +24,7 @@ class WordSlots extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(letterCount, (index) {
         final hasLetter = index < selectedIndices.length;
-        final isFirstHint = hintUsed && index == 0;
+        final isHinted = hasLetter && revealedHintIndices.contains(index);
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 220),
@@ -36,21 +34,23 @@ class WordSlots extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: hasLetter
-                ? themeColor.withValues(alpha: 0.2)
+                ? (isHinted
+                    ? AppColors.gold.withValues(alpha: 0.2)
+                    : themeColor.withValues(alpha: 0.2))
                 : Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(9),
             border: Border.all(
               color: hasLetter
-                  ? themeColor
-                  : (isFirstHint ? AppColors.gold : Colors.white12),
+                  ? (isHinted ? AppColors.gold : themeColor)
+                  : Colors.white12,
             ),
           ),
           child: Text(
-            hasLetter
-                ? nodes[selectedIndices[index]].letter
-                : (isFirstHint ? firstLetter : '•'),
+            hasLetter ? nodes[selectedIndices[index]].letter : '•',
             style: TextStyle(
-              color: hasLetter ? themeColor : Colors.white38,
+              color: hasLetter
+                  ? (isHinted ? AppColors.gold : themeColor)
+                  : Colors.white38,
               fontWeight: FontWeight.w900,
               fontSize: 17,
             ),

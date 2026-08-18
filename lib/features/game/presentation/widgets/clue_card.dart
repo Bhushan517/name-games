@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
 import '../../../../data/models/word_content.dart';
 
 class ClueCard extends StatelessWidget {
   const ClueCard({
     super.key,
     required this.level,
-    required this.hintUsed,
-    required this.hasSelectedLetters,
+    required this.isNextHintFree,
+    required this.canUseHint,
+    required this.totalHintsUsed,
+    required this.maxHints,
     required this.onHintTap,
-    this.onRewardedHintTap,
-    this.canUseRewardedHint = false,
   });
 
   final WordContent level;
-  final bool hintUsed;
-  final bool hasSelectedLetters;
+  final bool isNextHintFree;
+  final bool canUseHint;
+  final int totalHintsUsed;
+  final int maxHints;
   final VoidCallback onHintTap;
-  final VoidCallback? onRewardedHintTap;
-  final bool canUseRewardedHint;
 
   @override
   Widget build(BuildContext context) {
@@ -50,34 +49,20 @@ class ClueCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton.icon(
-                  onPressed: hintUsed || hasSelectedLetters ? null : onHintTap,
-                  icon: const Icon(
-                    Icons.lightbulb_outline_rounded,
+                  onPressed: canUseHint ? onHintTap : null,
+                  icon: Icon(
+                    isNextHintFree
+                        ? Icons.lightbulb_outline_rounded
+                        : Icons.play_circle_outline_rounded,
                     size: 16,
                   ),
                   label: Text(
-                    hintUsed
-                        ? 'STARTS WITH ${level.word[0]}'
-                        : AppStrings.hintPrompt,
+                    isNextHintFree
+                        ? 'HINT ($totalHintsUsed/$maxHints)'
+                        : 'WATCH AD FOR NEXT HINT ($totalHintsUsed/$maxHints)',
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
-                if (!hintUsed &&
-                    onRewardedHintTap != null &&
-                    canUseRewardedHint) ...[
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: hasSelectedLetters ? null : onRewardedHintTap,
-                    icon: const Icon(
-                      Icons.play_circle_outline_rounded,
-                      size: 16,
-                    ),
-                    label: const Text(
-                      'WATCH AD FOR HINT',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ],
               ],
             ),
           ],
