@@ -212,4 +212,90 @@ void main() {
       );
     });
   });
+
+  group('Rewarded Ads Limits Unit Tests', () {
+    test('Rewarded Hint grants exactly 1 hint and is capped at 3', () {
+      final controller = GameController(
+        challenge: firstChallenge,
+        repository: repository,
+      );
+
+      expect(controller.rewardedHintsUsed, 0);
+      expect(controller.canUseRewardedHint, true);
+
+      controller.grantRewardedHint();
+      expect(controller.rewardedHintsUsed, 1);
+      expect(controller.hintUsed, true);
+
+      controller.grantRewardedHint();
+      controller.grantRewardedHint();
+      expect(controller.rewardedHintsUsed, 3);
+      expect(controller.canUseRewardedHint, false);
+
+      // 4th attempt should do nothing
+      controller.grantRewardedHint();
+      expect(controller.rewardedHintsUsed, 3);
+    });
+
+    test(
+        'Rewarded Life grants 1 life, clears outOfLives state, and is capped at 2',
+        () async {
+      final controller = GameController(
+        challenge: firstChallenge,
+        repository: repository,
+      );
+
+      // Force outOfLives state
+      while (controller.lives > 0) {
+        // Drain a life by guessing wrong
+        for (var i = 0; i < firstChallenge.letterCount; i++) {
+          controller.selectLetter(i);
+        }
+        if (controller.currentAttempt == firstChallenge.word) {
+          controller.undo();
+          controller.undo();
+          controller.selectLetter(firstChallenge.letterCount - 1);
+          controller.selectLetter(firstChallenge.letterCount - 2);
+        }
+        await controller.validateSpelling();
+      }
+
+      expect(controller.validationState, GameValidationState.outOfLives);
+      expect(controller.rewardedLivesUsed, 0);
+      expect(controller.canUseRewardedLife, true);
+
+      controller.grantRewardedLife();
+      expect(controller.lives, 1);
+      expect(controller.rewardedLivesUsed, 1);
+      expect(controller.validationState,
+          GameValidationState.initial); // Cleared out of lives
+
+      controller.grantRewardedLife();
+      expect(controller.lives, 2);
+      expect(controller.rewardedLivesUsed, 2);
+      expect(controller.canUseRewardedLife, false);
+
+      // 3rd attempt should do nothing
+      controller.grantRewardedLife();
+      expect(controller.rewardedLivesUsed, 2);
+    });
+
+    test('resetLives() resets the rewarded limits', () {
+      final controller = GameController(
+        challenge: firstChallenge,
+        repository: repository,
+      );
+
+      controller.grantRewardedHint();
+      controller.grantRewardedLife();
+
+      expect(controller.rewardedHintsUsed, 1);
+      expect(controller.rewardedLivesUsed, 1);
+
+      controller.resetLives();
+
+      expect(controller.rewardedHintsUsed, 0);
+      expect(controller.rewardedLivesUsed, 0);
+    });
+  });
 }

@@ -10,12 +10,16 @@ class ClueCard extends StatelessWidget {
     required this.hintUsed,
     required this.hasSelectedLetters,
     required this.onHintTap,
+    this.onRewardedHintTap,
+    this.canUseRewardedHint = false,
   });
 
   final WordContent level;
   final bool hintUsed;
   final bool hasSelectedLetters;
   final VoidCallback onHintTap;
+  final VoidCallback? onRewardedHintTap;
+  final bool canUseRewardedHint;
 
   @override
   Widget build(BuildContext context) {
@@ -42,18 +46,39 @@ class ClueCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            TextButton.icon(
-              onPressed: hintUsed || hasSelectedLetters ? null : onHintTap,
-              icon: const Icon(
-                Icons.lightbulb_outline_rounded,
-                size: 16,
-              ),
-              label: Text(
-                hintUsed
-                    ? 'STARTS WITH ${level.word[0]}'
-                    : AppStrings.hintPrompt,
-                style: const TextStyle(fontSize: 12),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: hintUsed || hasSelectedLetters ? null : onHintTap,
+                  icon: const Icon(
+                    Icons.lightbulb_outline_rounded,
+                    size: 16,
+                  ),
+                  label: Text(
+                    hintUsed
+                        ? 'STARTS WITH ${level.word[0]}'
+                        : AppStrings.hintPrompt,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                if (!hintUsed &&
+                    onRewardedHintTap != null &&
+                    canUseRewardedHint) ...[
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: hasSelectedLetters ? null : onRewardedHintTap,
+                    icon: const Icon(
+                      Icons.play_circle_outline_rounded,
+                      size: 16,
+                    ),
+                    label: const Text(
+                      'WATCH AD FOR HINT',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

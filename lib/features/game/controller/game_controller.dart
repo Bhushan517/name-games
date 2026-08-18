@@ -40,6 +40,8 @@ class GameController extends ChangeNotifier {
   final List<int> _selectedIndices = <int>[];
   late int _lives;
   bool _hintUsed = false;
+  int _rewardedHintsUsed = 0;
+  int _rewardedLivesUsed = 0;
   bool _isCompleted = false;
   GameValidationState _validationState = GameValidationState.initial;
 
@@ -63,6 +65,8 @@ class GameController extends ChangeNotifier {
   List<int> get selectedIndices => List.unmodifiable(_selectedIndices);
   int get lives => _lives;
   bool get hintUsed => _hintUsed;
+  int get rewardedHintsUsed => _rewardedHintsUsed;
+  int get rewardedLivesUsed => _rewardedLivesUsed;
   bool get isCompleted => _isCompleted;
   GameValidationState get validationState => _validationState;
 
@@ -279,8 +283,44 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  bool get canUseRewardedHint => _rewardedHintsUsed < 3;
+
+  void grantRewardedHint() {
+    if (canUseRewardedHint) {
+      _rewardedHintsUsed++;
+      // A rewarded hint acts as a regular hint to the UI, but doesn't deduct stars.
+      _hintUsed = true;
+      notifyListeners();
+    }
+  }
+
+  bool get canUseRewardedLife => _rewardedLivesUsed < 2;
+
+  void grantRewardedLife() {
+    if (canUseRewardedLife) {
+      _rewardedLivesUsed++;
+      _lives++;
+
+      // Clear out of lives state
+      if (_validationState == GameValidationState.outOfLives) {
+        _validationState = GameValidationState.initial;
+      }
+
+      // For Timed mode, we just need to ensure the timer starts again
+      // without resetting the current progress.
+      if (mode == ChallengeMode.timed) {
+        resumeTimer();
+      }
+
+      notifyListeners();
+    }
+  }
+
   int calculateStars() {
-    if (_hintUsed) return 2;
+    // If the hint was exclusively given via an ad (i.e. allowFirstLetterHint is false,
+    // or they watched an ad but never clicked the regular hint first),
+    // we do not deduct stars. But to be safe, if _rewardedHintsUsed > 0 we can forgive the _hintUsed flag.
+    if (_hintUsed && _rewardedHintsUsed == 0) return 2;
     if (_lives == challenge.difficultyConfig.lives) return 3;
     return 2;
   }
@@ -341,6 +381,9 @@ class GameController extends ChangeNotifier {
 
   void resetLives() {
     _lives = challenge.difficultyConfig.lives;
+    _rewardedHintsUsed = 0;
+    _rewardedLivesUsed = 0;
+    _hintUsed = false;
     _selectedIndices.clear();
     _filledMissingLetters.clear();
     _validationState = GameValidationState.initial;

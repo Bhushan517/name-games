@@ -5,6 +5,7 @@ import '../../../data/models/challenge_mode.dart';
 import '../../../data/models/generated_challenge.dart';
 import '../../../data/repositories/challenge_repository.dart';
 import '../../../shared/widgets/space_background.dart';
+import '../../../core/services/ad_service.dart';
 import '../controller/game_controller.dart';
 import 'widgets/animated_letter_node.dart';
 import 'widgets/clue_card.dart';
@@ -89,6 +90,21 @@ class _GameScreenState extends State<GameScreen>
         ),
         content: const Text(AppStrings.outOfLivesMessage),
         actions: [
+          if (_controller.canUseRewardedLife &&
+              AdService().isRewardedLifeAdReady)
+            TextButton.icon(
+              onPressed: () {
+                _isOutOfLivesDialogVisible = false;
+                Navigator.pop(context);
+                AdService().showRewardedLifeAd(
+                  onRewardEarned: () {
+                    _controller.grantRewardedLife();
+                  },
+                );
+              },
+              icon: const Icon(Icons.play_circle_outline_rounded, size: 16),
+              label: const Text('WATCH AD FOR +1 LIFE'),
+            ),
           TextButton(
             onPressed: () {
               _isOutOfLivesDialogVisible = false;
@@ -145,6 +161,9 @@ class _GameScreenState extends State<GameScreen>
           stars: stars,
           onContinue: () {
             Navigator.pop(context); // Close dialog
+            if (!widget.isDailyMode) {
+              AdService().recordCampaignCompletionAndShowInterstitialIfNeeded();
+            }
             Navigator.pop(context, stars); // Return to Level Selection
           },
         ),
@@ -278,6 +297,23 @@ class _GameScreenState extends State<GameScreen>
                         _controller.selectedIndices.isNotEmpty ||
                             _controller.filledMissingLetters.isNotEmpty,
                     onHintTap: _controller.useHint,
+                    canUseRewardedHint: _controller.canUseRewardedHint &&
+                        AdService().isRewardedHintAdReady,
+                    onRewardedHintTap: () {
+                      if (!AdService().isRewardedHintAdReady) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Ad is currently unavailable. Please try again later.')),
+                        );
+                        return;
+                      }
+                      AdService().showRewardedHintAd(
+                        onRewardEarned: () {
+                          _controller.grantRewardedHint();
+                        },
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 4),
