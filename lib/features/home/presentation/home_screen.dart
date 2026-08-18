@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../app/routes/route_names.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/services/audio_service.dart';
 import '../../../core/services/local_storage_service.dart';
 import '../../../shared/widgets/space_background.dart';
 import 'widgets/help_dialog.dart';
+import 'widgets/settings_dialog.dart';
 import 'widgets/stat_badge.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _refreshStats();
+    AudioService().playBgm('menu_music.wav');
   }
 
   void _refreshStats() {
@@ -89,6 +92,13 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => SettingsDialog(storageService: widget.storageService),
+                    ),
+                    icon: const Icon(Icons.settings_rounded),
                   ),
                   IconButton(
                     onPressed: () => showDialog<void>(

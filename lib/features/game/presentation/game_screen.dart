@@ -6,6 +6,7 @@ import '../../../data/models/generated_challenge.dart';
 import '../../../data/repositories/challenge_repository.dart';
 import '../../../shared/widgets/space_background.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../core/services/audio_service.dart';
 import '../controller/game_controller.dart';
 import 'widgets/animated_letter_node.dart';
 import 'widgets/clue_card.dart';
@@ -49,6 +50,7 @@ class _GameScreenState extends State<GameScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    AudioService().playBgm('gameplay_music.wav');
     _controller = GameController(
       challenge: widget.challenge,
       repository: widget.repository,
@@ -70,6 +72,7 @@ class _GameScreenState extends State<GameScreen>
     WidgetsBinding.instance.removeObserver(this);
     _shakeController.dispose();
     _controller.dispose();
+    AudioService().playBgm('menu_music.wav');
     super.dispose();
   }
 

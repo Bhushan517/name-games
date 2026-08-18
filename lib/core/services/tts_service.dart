@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'audio_service.dart';
 
 /// Production TTS service backed by [FlutterTts].
 ///
@@ -28,10 +29,22 @@ class TtsService {
       await _tts!.setVolume(1.0);
       await _tts!.setPitch(1.0);
 
-      _tts!.setStartHandler(() => _isPlaying = true);
-      _tts!.setCompletionHandler(() => _isPlaying = false);
-      _tts!.setCancelHandler(() => _isPlaying = false);
-      _tts!.setErrorHandler((_) => _isPlaying = false);
+      _tts!.setStartHandler(() {
+        _isPlaying = true;
+        AudioService().duckBgmForTts();
+      });
+      _tts!.setCompletionHandler(() {
+        _isPlaying = false;
+        AudioService().unduckBgmFromTts();
+      });
+      _tts!.setCancelHandler(() {
+        _isPlaying = false;
+        AudioService().unduckBgmFromTts();
+      });
+      _tts!.setErrorHandler((_) {
+        _isPlaying = false;
+        AudioService().unduckBgmFromTts();
+      });
 
       _initialized = true;
     } catch (e) {

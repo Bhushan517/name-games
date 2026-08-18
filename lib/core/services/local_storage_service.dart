@@ -162,4 +162,12 @@ class LocalStorageService {
   int getTotalStars() {
     return loadPlayerProgress().totalStars;
   }
+
+  Future<void> setMusicEnabled(bool enabled) async {
+    await _prefs.setBool(keyMusic, enabled);
+  }
+
+  Future<void> setSoundEnabled(bool enabled) async {
+    await _prefs.setBool(keySound, enabled);
+  }
 }

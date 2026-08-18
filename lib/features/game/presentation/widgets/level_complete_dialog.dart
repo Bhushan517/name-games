@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../core/services/audio_service.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/tts_service.dart';
@@ -26,6 +28,19 @@ class _LevelCompleteDialogState extends State<LevelCompleteDialog>
     vsync: this,
     duration: const Duration(milliseconds: 850),
   )..forward();
+
+  @override
+  void initState() {
+    super.initState();
+    AudioService().playSfx('level_complete.wav');
+    for (int i = 0; i < widget.stars; i++) {
+      Timer(Duration(milliseconds: 400 + i * 170), () {
+        if (mounted) {
+          AudioService().playSfx('star_earned.wav');
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {

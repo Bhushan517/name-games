@@ -100,8 +100,8 @@ void main() {
       // Tap CHECK WORD unconditionally
       expect(find.text('CHECK WORD'), findsOneWidget);
       await tester.tap(find.text('CHECK WORD'));
-      // Wait for the 650ms completion delay
-      await tester.pump(const Duration(milliseconds: 1000));
+      // Wait for the 650ms completion delay and dialog
+      await tester.pumpAndSettle();
 
       // Verify pattern name is now revealed in GameScreen / LevelCompleteDialog
       expect(find.text(patternName), findsWidgets);

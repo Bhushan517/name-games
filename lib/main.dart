@@ -9,6 +9,7 @@ import 'data/sources/local_word_data_source.dart';
 
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'core/services/ad_service.dart';
+import 'core/services/audio_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,7 @@ Future<void> main() async {
   ]);
 
   final storageService = await LocalStorageService.init();
+  await AudioService().init(storageService);
   final wordDataSource = LocalWordDataSource();
   final wordRepository = WordRepository(wordDataSource);
   final challengeRepository = ChallengeRepository(

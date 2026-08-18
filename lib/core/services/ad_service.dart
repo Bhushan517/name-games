@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'audio_service.dart';
+import '../constants/app_constants.dart';
 
 class AdService {
   static AdService? _mockInstance;
@@ -150,6 +152,7 @@ class AdService {
     _isRewardedHintShowing = true;
     bool rewardGranted = false;
 
+    AudioService().onAdShow();
     _rewardedHintAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) => debugPrint('Hint ad showed.'),
       onAdDismissedFullScreenContent: (ad) {
@@ -157,6 +160,7 @@ class AdService {
         ad.dispose();
         _rewardedHintAd = null;
         _isRewardedHintShowing = false;
+        AudioService().onAdDismiss();
         onAdClosed();
         loadRewardedHintAd(); // Preload next
       },
@@ -165,6 +169,7 @@ class AdService {
         ad.dispose();
         _rewardedHintAd = null;
         _isRewardedHintShowing = false;
+        AudioService().onAdDismiss();
         onAdClosed();
         loadRewardedHintAd(); // Preload next
       },
@@ -231,6 +236,7 @@ class AdService {
     _isRewardedLifeShowing = true;
     bool rewardGranted = false;
 
+    AudioService().onAdShow();
     _rewardedLifeAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) => debugPrint('Life ad showed.'),
       onAdDismissedFullScreenContent: (ad) {
@@ -238,6 +244,7 @@ class AdService {
         ad.dispose();
         _rewardedLifeAd = null;
         _isRewardedLifeShowing = false;
+        AudioService().onAdDismiss();
         onAdClosed();
         loadRewardedLifeAd(); // Preload next
       },
@@ -246,6 +253,7 @@ class AdService {
         ad.dispose();
         _rewardedLifeAd = null;
         _isRewardedLifeShowing = false;
+        AudioService().onAdDismiss();
         onAdClosed();
         loadRewardedLifeAd(); // Preload next
       },
@@ -294,20 +302,35 @@ class AdService {
     });
   }
 
-  void recordCampaignCompletionAndShowInterstitialIfNeeded(
-      {required VoidCallback onContinue}) {
+  Future<void> recordCampaignCompletionAndShowInterstitialIfNeeded({
+    required VoidCallback onContinue,
+  }) async {
     _campaignCompletionsThisSession++;
 
-    if (_campaignCompletionsThisSession % 4 == 0) {
-      final now = DateTime.now();
-      if (_lastInterstitialTime == null ||
-          now.difference(_lastInterstitialTime!) >= _interstitialCooldown) {
-        _showInterstitialAd(onAdClosed: onContinue);
-        return;
-      }
+    if (_campaignCompletionsThisSession >=
+            AppConstants.adFrequencyCampaignLevels &&
+        _interstitialAd != null) {
+      AudioService().onAdShow();
+      _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (ad) {
+          ad.dispose();
+          _interstitialAd = null;
+          _campaignCompletionsThisSession = 0;
+          loadInterstitialAd();
+          AudioService().onAdDismiss();
+          onContinue();
+        },
+        onAdFailedToShowFullScreenContent: (ad, error) {
+          ad.dispose();
+          _interstitialAd = null;
+          AudioService().onAdDismiss();
+          onContinue();
+        },
+      );
+      await _interstitialAd!.show();
+    } else {
+      onContinue();
     }
-    // Proceed if ad is not needed
-    onContinue();
   }
 
   void _showInterstitialAd({required VoidCallback onAdClosed}) {
@@ -323,6 +346,7 @@ class AdService {
     _isInterstitialShowing = true;
     _lastInterstitialTime = DateTime.now();
 
+    AudioService().onAdShow();
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) =>
           debugPrint('Interstitial ad showed.'),
@@ -331,6 +355,7 @@ class AdService {
         ad.dispose();
         _interstitialAd = null;
         _isInterstitialShowing = false;
+        AudioService().onAdDismiss();
         onAdClosed();
         loadInterstitialAd(); // Preload next
       },
@@ -339,6 +364,7 @@ class AdService {
         ad.dispose();
         _interstitialAd = null;
         _isInterstitialShowing = false;
+        AudioService().onAdDismiss();
         onAdClosed();
         loadInterstitialAd(); // Preload next
       },

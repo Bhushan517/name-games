@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import '../../../core/services/audio_service.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/tts_service.dart';
 import '../../../data/models/challenge_mode.dart';
@@ -278,6 +279,10 @@ class GameController extends ChangeNotifier {
       if (_isTimerPaused) return;
 
       _timeRemaining--;
+      if (_timeRemaining <= 5 && _timeRemaining > 0) {
+        AudioService().playSfx('timer_tick.wav', volume: 0.3);
+      }
+      
       if (_timeRemaining <= 0) {
         timer.cancel();
         _handleTimeout();
@@ -301,8 +306,10 @@ class GameController extends ChangeNotifier {
     _manualSelectedNodeIds.clear();
     if (_lives <= 0) {
       _validationState = GameValidationState.outOfLives;
+      AudioService().playSfx('out_of_lives.wav', volume: 0.35);
     } else {
       _validationState = GameValidationState.timeOut;
+      AudioService().playSfx('wrong_answer.wav', volume: 0.35);
       _timeRemaining = challenge.difficultyConfig.timerSeconds;
       _startTimedMode();
     }
@@ -320,6 +327,7 @@ class GameController extends ChangeNotifier {
   // --- User Selection Actions ---
   void selectLetter(int nodeIndex) {
     if (_isCompleted || isSelected(nodeIndex)) return;
+    AudioService().playSfx('letter_select.wav');
     HapticService.tap();
     _manualSelectedNodeIds.add(_nodes[nodeIndex].id);
     _validationState = GameValidationState.initial;
@@ -332,6 +340,7 @@ class GameController extends ChangeNotifier {
       return;
     }
     if (_manualSelectedNodeIds.isNotEmpty && !_isCompleted) {
+      AudioService().playSfx('letter_undo.wav');
       _manualSelectedNodeIds.removeLast();
       _validationState = GameValidationState.initial;
       notifyListeners();
@@ -340,6 +349,8 @@ class GameController extends ChangeNotifier {
 
   void grantHint() {
     if (!canUseHint) return;
+    
+    AudioService().playSfx('hint_reveal.wav');
 
     if (mode == ChallengeMode.missingLetter) {
       for (final idx in _missingIndices) {
@@ -399,6 +410,7 @@ class GameController extends ChangeNotifier {
 
   void grantRewardedLife() {
     if (canUseRewardedLife) {
+      AudioService().playSfx('extra_life.wav');
       _rewardedLivesUsed++;
       _lives++;
 
@@ -446,6 +458,7 @@ class GameController extends ChangeNotifier {
       _memoryTimer?.cancel();
       _timedChallengeTimer?.cancel();
       _validationState = GameValidationState.correct;
+      AudioService().playSfx('correct_answer.wav');
       HapticService.success();
       final stars = calculateStars();
       // Daily mode must never unlock or skip campaign challenge numbers.
@@ -477,8 +490,10 @@ class GameController extends ChangeNotifier {
 
     if (_lives <= 0) {
       _validationState = GameValidationState.outOfLives;
+      AudioService().playSfx('out_of_lives.wav', volume: 0.35);
     } else {
       _validationState = GameValidationState.wrong;
+      AudioService().playSfx('wrong_answer.wav', volume: 0.35);
     }
 
     notifyListeners();
