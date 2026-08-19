@@ -6,6 +6,7 @@ import '../../../data/models/generated_challenge.dart';
 import '../../../data/models/player_progress.dart';
 import '../../../data/repositories/challenge_repository.dart';
 import '../../../shared/widgets/space_background.dart';
+import '../../../core/services/audio_service.dart';
 import 'widgets/challenge_card.dart';
 import 'widgets/pack_selector.dart';
 
@@ -86,7 +87,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: AudioService.withSound(() => Navigator.pop(context)),
                     icon: const Icon(Icons.arrow_back_rounded),
                   ),
                   const Expanded(
@@ -155,7 +156,9 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         challenge: challenge,
                         isLocked: isLocked,
                         starsEarned: starsEarned,
-                        onTap: () => _openChallenge(challenge),
+                        onTap: isLocked
+                            ? () => _openChallenge(challenge)
+                            : AudioService.withSound(() => _openChallenge(challenge))!,
                       ),
                     ),
                   );

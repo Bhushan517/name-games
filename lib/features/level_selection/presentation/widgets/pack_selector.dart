@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/audio_service.dart';
 
 class PackSelector extends StatelessWidget {
   const PackSelector({
@@ -27,7 +28,7 @@ class PackSelector extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: InkWell(
-              onTap: () => onPackSelected(index),
+              onTap: AudioService.withSound(() => onPackSelected(index)),
               borderRadius: BorderRadius.circular(12),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),

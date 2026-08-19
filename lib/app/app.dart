@@ -40,6 +40,7 @@ class _SpellShapeQuestAppState extends State<SpellShapeQuestApp> with WidgetsBin
       AudioService().disposeAll();
       TtsService.dispose();
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      TtsService.stop();
       AudioService().onAppPaused();
     } else if (state == AppLifecycleState.resumed) {
       AudioService().onAppResumed();

@@ -177,7 +177,7 @@ void main() {
     expect(AudioService().testPlayedSfx, contains('extra_life.wav'));
   });
   
-  testWidgets('Timer tick plays exactly 5 times in the last 5 seconds', (WidgetTester tester) async {
+  testWidgets('Timer tick plays exactly 5 times in the last 5 seconds, and resets on retry', (WidgetTester tester) async {
     final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
     final controller = GameController(
       challenge: challenge,
@@ -197,17 +197,45 @@ void main() {
     // So far, no ticks should have played
     expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').isEmpty, true);
     
-    // Now play the last 6 seconds (from 6 down to 0)
-    for (int i = 0; i < 6; i++) {
+    // Now play the next 3 seconds (from 6 down to 3)
+    for (int i = 0; i < 3; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
     
-    final ticks = AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length;
-    expect(ticks, 5);
+    // Ticks at 5, 4, 3 = 3 ticks
+    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 3);
     
-    // At zero, no additional ticks
-    await tester.pump(const Duration(seconds: 1));
+    // Simulate App Pause
+    controller.pauseTimer();
+    await tester.pump(const Duration(seconds: 2));
+    
+    // Timer shouldn't tick while paused
+    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 3);
+    
+    // Resume App
+    controller.resumeTimer();
+    
+    // Play remaining 3 seconds (2, 1, 0)
+    for (int i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    
+    // Ticks at 2, 1. At 0 it times out (no tick)
     expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 5);
+    
+    // At zero and below, no additional ticks
+    await tester.pump(const Duration(seconds: 2));
+    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 5);
+    
+    // Simulate Retry (reset lives)
+    AudioService().testPlayedSfx.clear();
+    controller.resetLives(); // This restarts the timer in the game logic
+    
+    // Fast forward to just before 5 seconds again
+    for (int i = 0; i < totalTime - 6; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').isEmpty, true);
     
     controller.dispose();
     await tester.pump(const Duration(seconds: 1)); // Cleanup

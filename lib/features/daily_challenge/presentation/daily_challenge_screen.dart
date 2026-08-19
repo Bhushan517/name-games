@@ -6,6 +6,7 @@ import '../../../data/models/generated_challenge.dart';
 import '../../../data/models/player_progress.dart';
 import '../../../data/repositories/challenge_repository.dart';
 import '../../../shared/widgets/space_background.dart';
+import '../../../core/services/audio_service.dart';
 
 class DailyChallengeScreen extends StatefulWidget {
   const DailyChallengeScreen({
@@ -94,7 +95,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
               Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: AudioService.withSound(() => Navigator.pop(context)),
                     icon: const Icon(Icons.arrow_back_rounded),
                   ),
                   const Expanded(
@@ -219,7 +220,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                           width: double.infinity,
                           height: 56,
                           child: FilledButton.icon(
-                            onPressed: _playDaily,
+                            onPressed: AudioService.withSound(_playDaily),
                             style: FilledButton.styleFrom(
                               backgroundColor: isCompletedToday
                                   ? AppColors.purple

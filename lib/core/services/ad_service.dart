@@ -328,11 +328,13 @@ class AdService {
     }
 
     _isInterstitialShowing = true;
-    _lastInterstitialTime = DateTime.now();
 
     AudioService().onAdShow();
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) => debugPrint('Interstitial ad showed.'),
+      onAdShowedFullScreenContent: (ad) {
+        debugPrint('Interstitial ad showed.');
+        _lastInterstitialTime = DateTime.now();
+      },
       onAdDismissedFullScreenContent: (ad) {
         debugPrint('Interstitial ad dismissed.');
         ad.dispose();

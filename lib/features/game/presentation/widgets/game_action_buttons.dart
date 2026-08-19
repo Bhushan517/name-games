@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/audio_service.dart';
 
 class GameActionButtons extends StatelessWidget {
   const GameActionButtons({
@@ -28,7 +29,7 @@ class GameActionButtons extends StatelessWidget {
           Expanded(
             flex: 2,
             child: FilledButton.icon(
-              onPressed: onCheckWord,
+              onPressed: AudioService.withSound(onCheckWord),
               icon: const Icon(Icons.check_circle_rounded, size: 20),
               label: const Text(
                 AppStrings.checkWord,

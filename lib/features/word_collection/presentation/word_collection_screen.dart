@@ -4,6 +4,7 @@ import '../../../data/models/player_progress.dart';
 import '../../../data/models/word_content.dart';
 import '../../../data/repositories/word_repository.dart';
 import '../../../shared/widgets/space_background.dart';
+import '../../../core/services/audio_service.dart';
 import 'widgets/word_card.dart';
 
 class WordCollectionScreen extends StatefulWidget {
@@ -72,7 +73,7 @@ class _WordCollectionScreenState extends State<WordCollectionScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: AudioService.withSound(() => Navigator.pop(context)),
                     icon: const Icon(Icons.arrow_back_rounded),
                   ),
                   Expanded(

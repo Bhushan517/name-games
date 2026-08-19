@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/services/audio_service.dart';
 
 class HelpDialog extends StatelessWidget {
   const HelpDialog({super.key});
@@ -40,7 +41,7 @@ class HelpDialog extends StatelessWidget {
       ),
       actions: [
         FilledButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: AudioService.withSound(() => Navigator.pop(context)),
           child: const Text(AppStrings.gotIt),
         ),
       ],

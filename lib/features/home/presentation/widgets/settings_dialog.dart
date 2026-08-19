@@ -42,7 +42,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           SwitchListTile(
             title: const Text('Background Music', style: TextStyle(fontWeight: FontWeight.bold)),
             value: _musicEnabled,
-            activeColor: AppColors.cyan,
+            activeThumbColor: AppColors.cyan,
             onChanged: (val) {
               setState(() {
                 _musicEnabled = val;
@@ -53,7 +53,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           SwitchListTile(
             title: const Text('Sound Effects', style: TextStyle(fontWeight: FontWeight.bold)),
             value: _soundEnabled,
-            activeColor: AppColors.cyan,
+            activeThumbColor: AppColors.cyan,
             onChanged: (val) {
               setState(() {
                 _soundEnabled = val;
@@ -67,7 +67,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: AudioService.withSound(() => Navigator.pop(context)),
             child: const Text('CLOSE'),
           ),
         ),

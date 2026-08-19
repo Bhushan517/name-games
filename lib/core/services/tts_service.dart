@@ -16,6 +16,7 @@ class TtsService {
   static FlutterTts? _tts;
   static bool _isPlaying = false;
   static bool _initialized = false;
+  static int _speechToken = 0;
 
   static bool get isPlaying => _isPlaying;
 
@@ -28,23 +29,7 @@ class TtsService {
       await _tts!.setSpeechRate(0.45); // slightly slower for children
       await _tts!.setVolume(1.0);
       await _tts!.setPitch(1.0);
-
-      _tts!.setStartHandler(() {
-        _isPlaying = true;
-        AudioService().duckBgmForTts();
-      });
-      _tts!.setCompletionHandler(() {
-        _isPlaying = false;
-        AudioService().unduckBgmFromTts();
-      });
-      _tts!.setCancelHandler(() {
-        _isPlaying = false;
-        AudioService().unduckBgmFromTts();
-      });
-      _tts!.setErrorHandler((_) {
-        _isPlaying = false;
-        AudioService().unduckBgmFromTts();
-      });
+      await _tts!.awaitSpeakCompletion(true);
 
       _initialized = true;
     } catch (e) {
@@ -62,8 +47,20 @@ class TtsService {
     try {
       await init();
       if (_tts == null) return;
+      
+      stop();
+      _speechToken++;
+      final currentToken = _speechToken;
+      
       _isPlaying = true;
+      AudioService().duckBgmForTts();
+      
       await _tts!.speak(word);
+      
+      if (currentToken == _speechToken) {
+        _isPlaying = false;
+        AudioService().unduckBgmFromTts();
+      }
     } catch (e) {
       _isPlaying = false;
       AudioService().unduckBgmFromTts();
@@ -78,6 +75,7 @@ class TtsService {
       // (where the flutter_tts channel is not registered) is swallowed.
       _tts?.stop().ignore();
     } catch (_) {}
+    _speechToken++;
     _isPlaying = false;
     AudioService().unduckBgmFromTts();
   }

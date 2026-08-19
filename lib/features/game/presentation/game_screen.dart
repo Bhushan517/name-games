@@ -117,20 +117,20 @@ class _GameScreenState extends State<GameScreen>
               label: const Text('WATCH AD FOR +1 LIFE'),
             ),
           TextButton(
-            onPressed: () {
+            onPressed: AudioService.withSound(() {
               _isOutOfLivesDialogVisible = false;
               Navigator.pop(context); // Close dialog
               Navigator.pop(
                   context); // Return to Level Selection / previous screen
-            },
+            }),
             child: const Text(AppStrings.exitLevel),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: AudioService.withSound(() {
               _isOutOfLivesDialogVisible = false;
               Navigator.pop(context); // Close dialog
               _controller.resetLives();
-            },
+            }),
             child: const Text(AppStrings.tryAgain),
           ),
         ],
@@ -228,7 +228,7 @@ class _GameScreenState extends State<GameScreen>
                     child: Row(
                       children: [
                         IconButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: AudioService.withSound(() => Navigator.pop(context)),
                           icon: const Icon(Icons.close_rounded),
                         ),
                         Expanded(
