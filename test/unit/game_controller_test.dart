@@ -68,6 +68,9 @@ class FakeAdService implements AdService {
   @override
   void loadInterstitialAd() {}
   @override
+  void resetStateForTest() {}
+
+  @override
   Future<void> recordCampaignCompletionAndShowInterstitialIfNeeded(
       {required VoidCallback onContinue}) async {
     onContinue();

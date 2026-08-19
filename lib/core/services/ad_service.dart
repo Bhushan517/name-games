@@ -98,7 +98,6 @@ class AdService {
   int _interstitialRetryAttempt = 0;
 
   static const int _maxRetryAttempts = 5;
-  static const Duration _retryBaseDelay = Duration(seconds: 10);
 
   @visibleForTesting
   void resetStateForTest() {
@@ -380,8 +379,7 @@ class AdService {
     }
 
     if (_lastInterstitialTime != null &&
-        DateTime.now().difference(_lastInterstitialTime!) <
-            _interstitialCooldown) {
+        clock().difference(_lastInterstitialTime!) < _interstitialCooldown) {
       onContinue();
       return;
     }
@@ -396,44 +394,53 @@ class AdService {
     }
 
     _isInterstitialShowing = true;
-    bool hasContinued = false;
+    bool terminalHandled = false;
+    final displayedAd = _interstitialAd!;
 
-    void safeContinue() {
-      if (!hasContinued) {
-        hasContinued = true;
-        onContinue();
+    void terminalCleanup(bool success) {
+      if (terminalHandled) return;
+      terminalHandled = true;
+
+      displayedAd.dispose();
+
+      // Only clear if the global reference hasn't been replaced by a newly preloaded ad
+      if (_interstitialAd == displayedAd) {
+        _interstitialAd = null;
       }
+
+      _isInterstitialShowing = false;
+      AudioService().onAdDismiss();
+
+      if (success) {
+        _campaignCompletionsThisSession = 0;
+      }
+
+      onContinue();
+      loadInterstitialAd(); // Preload next exactly once
     }
 
     AudioService().onAdShow();
-    _interstitialAd!.setFullScreenContentCallback(
+    displayedAd.setFullScreenContentCallback(
       onAdShowedFullScreenContent: () {
         debugPrint('Interstitial ad showed.');
         _lastInterstitialTime = clock();
       },
       onAdDismissedFullScreenContent: () {
         debugPrint('Interstitial ad dismissed.');
-        _interstitialAd?.dispose();
-        _interstitialAd = null;
-        _isInterstitialShowing = false;
-        _campaignCompletionsThisSession =
-            0; // Only reset when successfully shown and dismissed
-        AudioService().onAdDismiss();
-        safeContinue();
-        loadInterstitialAd(); // Preload next
+        terminalCleanup(true);
       },
       onAdFailedToShowFullScreenContent: (error) {
         debugPrint('Interstitial ad failed to show: $error');
-        _interstitialAd?.dispose();
-        _interstitialAd = null;
-        _isInterstitialShowing = false;
-        AudioService().onAdDismiss();
-        safeContinue();
-        loadInterstitialAd(); // Preload next
+        terminalCleanup(false);
       },
     );
 
-    await _interstitialAd!.show();
+    try {
+      await displayedAd.show();
+    } catch (e) {
+      debugPrint('Interstitial ad show exception: $e');
+      terminalCleanup(false);
+    }
   }
 
   void dispose() {

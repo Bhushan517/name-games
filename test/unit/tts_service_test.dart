@@ -81,6 +81,7 @@ void main() {
     test('Actual English word is passed to TTS and music ducks correctly',
         () async {
       final speakFuture = TtsService.speak('APPLE');
+      await Future.delayed(Duration.zero);
 
       expect(AudioService().isDucking, true);
       expect(fakeEngine.lastSpokenText, 'APPLE');
@@ -96,12 +97,14 @@ void main() {
     test('Two rapid requests do not overlap, second request replaces first',
         () async {
       final firstSpeak = TtsService.speak('ONE');
+      await Future.delayed(Duration.zero);
 
       expect(fakeEngine.lastSpokenText, 'ONE');
       expect(AudioService().isDucking, true);
 
       // While first is speaking, trigger second
       final secondSpeak = TtsService.speak('TWO');
+      await Future.delayed(Duration.zero);
 
       // The first should be stopped (simulating stop completes its completer)
       await firstSpeak;
@@ -121,10 +124,10 @@ void main() {
 
     test('Manual stop restores music exactly once', () async {
       final speakFuture = TtsService.speak('HELLO');
-      
+
       // Wait for the async init() inside speak() to finish so the engine actually starts
       await Future.delayed(Duration.zero);
-      
+
       expect(AudioService().isDucking, true);
 
       TtsService.stop();

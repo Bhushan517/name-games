@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class FakeInterstitialAdWrapper implements InterstitialAdWrapper {
   bool isDisposed = false;
   bool simulateFailure = false;
+  bool simulateException = false;
   void Function()? _onAdShowed;
   void Function()? _onAdDismissed;
   void Function(dynamic error)? _onAdFailed;
@@ -25,16 +26,22 @@ class FakeInterstitialAdWrapper implements InterstitialAdWrapper {
 
   @override
   Future<void> show() async {
+    if (simulateException) {
+      throw Exception('Simulated exception during show()');
+    }
     if (simulateFailure) {
       _onAdFailed?.call('Simulated failure');
     } else {
       _onAdShowed?.call();
-      // Test must manually dismiss
     }
   }
 
   void simulateDismiss() {
     _onAdDismissed?.call();
+  }
+
+  void simulateFailAfterShow() {
+    _onAdFailed?.call('Delayed failure');
   }
 
   @override
@@ -45,7 +52,7 @@ class FakeInterstitialAdWrapper implements InterstitialAdWrapper {
 
 void main() {
   group('AdService Production Interstitial Tests', () {
-    late FakeInterstitialAdWrapper currentFakeAd;
+    FakeInterstitialAdWrapper? currentFakeAd;
     late AdService adService;
 
     setUp(() async {
@@ -56,7 +63,6 @@ void main() {
       AudioService().enableTestMode();
       await AudioService().init(storage);
 
-      // Clean singleton state before each test if possible
       AdService.mockInstance = null; // Reset factory
 
       adService = AdService();
@@ -64,11 +70,17 @@ void main() {
 
       adService.interstitialLoadProvider = (adUnitId, onLoaded, onFailed) {
         currentFakeAd = FakeInterstitialAdWrapper();
-        onLoaded(currentFakeAd);
+        onLoaded(currentFakeAd!);
       };
 
       // Load first ad
       adService.loadInterstitialAd();
+    });
+
+    tearDown(() {
+      adService.dispose();
+      AdService.mockInstance = null;
+      AudioService().disposeAll();
     });
 
     test('1, 2, 3 completions show nothing, 4th shows ad', () {
@@ -83,15 +95,13 @@ void main() {
         }
 
         expect(continueCount, 3);
-        // Ensure no ad was shown, and the time is still null
 
         adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
           onContinue: () => continueCount++,
         );
-        // Before we call simulateDismiss, onContinue shouldn't be called yet for the 4th
-        expect(continueCount, 3);
 
-        currentFakeAd.simulateDismiss();
+        expect(continueCount, 3); // 4th deferred until dismiss
+        currentFakeAd!.simulateDismiss();
         expect(continueCount, 4);
       });
     });
@@ -101,11 +111,11 @@ void main() {
         adService.clock = () => async.getClock(DateTime.now()).now();
         int continueCount = 0;
 
-        // Trigger first ad (4 levels)
+        // Trigger first ad
         for (int i = 0; i < 4; i++) {
           adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
               onContinue: () => continueCount++);
-          if (i == 3) currentFakeAd.simulateDismiss();
+          if (i == 3) currentFakeAd!.simulateDismiss();
         }
         expect(continueCount, 4);
 
@@ -114,58 +124,98 @@ void main() {
           adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
               onContinue: () => continueCount++);
         }
+        expect(continueCount, 8); // Bypassed
 
-        // Should have continued immediately 4 times because of cooldown bypass
-        expect(continueCount, 8);
-
-        // Advance time by 1 minute, still blocked
-        async.elapse(const Duration(minutes: 1));
+        // Advance time by 1m 59s, still blocked
+        async.elapse(const Duration(minutes: 1, seconds: 59));
         adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
             onContinue: () => continueCount++);
         expect(continueCount, 9);
 
-        // Advance time past 2 minutes
-        async.elapse(const Duration(minutes: 1, seconds: 1));
+        // Advance past 2 minutes
+        async.elapse(const Duration(seconds: 1));
         adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
             onContinue: () => continueCount++);
 
-        // Ad should show now, meaning onContinue is deferred until dismiss
-        expect(continueCount, 9);
-        currentFakeAd.simulateDismiss();
+        expect(continueCount, 9); // Deferred
+        currentFakeAd!.simulateDismiss();
         expect(continueCount, 10);
       });
     });
 
     test(
-        'Failure to show does not start cooldown or reset counter, allows exactly once continue',
+        'Dismiss calls navigation exactly once and duplicate callbacks run cleanup exactly once',
         () {
       fakeAsync((async) {
         adService.clock = () => async.getClock(DateTime.now()).now();
         int continueCount = 0;
-
-        currentFakeAd.simulateFailure = true;
 
         for (int i = 0; i < 4; i++) {
           adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
               onContinue: () => continueCount++);
         }
 
-        // It failed to show, so onContinue was called immediately inside failure callback
-        expect(continueCount, 4);
+        final displayedAd = currentFakeAd!;
 
-        // Try again immediately (5th completion).
-        // We load a new fake ad in failure callback, ensure it doesn't fail this time
-        currentFakeAd.simulateFailure = false;
+        displayedAd.simulateDismiss();
+        displayedAd.simulateDismiss();
+        displayedAd.simulateDismiss();
+
+        expect(continueCount, 4);
+        expect(displayedAd.isDisposed, true);
+      });
+    });
+
+    test(
+        'Failure calls navigation exactly once, starts no cooldown, does not reset counter',
+        () {
+      fakeAsync((async) {
+        adService.clock = () => async.getClock(DateTime.now()).now();
+        int continueCount = 0;
+
+        currentFakeAd!.simulateFailure = true;
+        final failedAd = currentFakeAd!;
+
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () => continueCount++);
+        }
+
+        expect(continueCount, 4); // Immediate callback on failure
+        expect(failedAd.isDisposed, true);
+
+        // Try again immediately (no cooldown started, counter not reset)
+        currentFakeAd!.simulateFailure = false;
         adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
             onContinue: () => continueCount++);
 
-        expect(continueCount, 4); // Deferred until dismiss
-        currentFakeAd.simulateDismiss();
+        expect(continueCount, 4);
+        currentFakeAd!.simulateDismiss();
         expect(continueCount, 5);
       });
     });
 
-    test('Exactly once callback protection handles duplicate SDK callbacks',
+    test('Directly thrown show() exception calls navigation exactly once', () {
+      fakeAsync((async) {
+        adService.clock = () => async.getClock(DateTime.now()).now();
+        int continueCount = 0;
+
+        currentFakeAd!.simulateException = true;
+        final excAd = currentFakeAd!;
+
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () => continueCount++);
+        }
+
+        async.flushMicrotasks();
+
+        expect(continueCount, 4); // Cleaned up immediately
+        expect(excAd.isDisposed, true);
+      });
+    });
+
+    test('Dismiss followed by failure still runs terminal cleanup exactly once',
         () {
       fakeAsync((async) {
         adService.clock = () => async.getClock(DateTime.now()).now();
@@ -176,48 +226,60 @@ void main() {
               onContinue: () => continueCount++);
         }
 
-        expect(continueCount, 3); // 4th is waiting for ad dismiss
+        final ad = currentFakeAd!;
+        ad.simulateDismiss();
+        ad.simulateFailAfterShow();
 
-        // Simulate aggressive bad SDK firing dismiss multiple times
-        currentFakeAd.simulateDismiss();
-        currentFakeAd.simulateDismiss();
-        currentFakeAd.simulateDismiss();
-
-        expect(continueCount, 4); // Handled exactly once!
+        expect(continueCount, 4);
       });
     });
 
-    test('Unavailable ad starts no cooldown and does not reset counter', () {
+    test('Newly preloaded ad is not disposed by an old duplicate callback', () {
+      fakeAsync((async) {
+        adService.clock = () => async.getClock(DateTime.now()).now();
+
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () {});
+        }
+
+        final firstAd = currentFakeAd!;
+        firstAd.simulateDismiss(); // This preloads the second ad
+
+        final secondAd = currentFakeAd!;
+        expect(firstAd == secondAd, false);
+
+        firstAd.simulateDismiss(); // Duplicate callback from first ad
+
+        expect(secondAd.isDisposed, false); // Second ad must remain loaded
+      });
+    });
+
+    test('Unavailable ad defers and does not reset the completion counter', () {
       fakeAsync((async) {
         adService.clock = () => async.getClock(DateTime.now()).now();
         int continueCount = 0;
 
-        // Make ad unavailable by simulating a failed load
-        adService.interstitialLoadProvider = (a, onL, onF) {
-          onF('Simulated Load Error');
-        };
-        adService.loadInterstitialAd(); // Force failure load
+        // Force interstitialAd to be null by clearing it directly
+        // (in production this happens if load fails or hasn't finished)
+        adService.resetStateForTest(); // Clears it
 
         for (int i = 0; i < 4; i++) {
           adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
               onContinue: () => continueCount++);
         }
 
-        // It defers immediately because ad is null
-        expect(continueCount, 4);
+        expect(continueCount, 4); // Deferred immediately
 
-        // Now make ad available
-        adService.interstitialLoadProvider = (a, onL, onF) {
-          currentFakeAd = FakeInterstitialAdWrapper();
-          onL(currentFakeAd);
-        };
+        // Now load a real ad
         adService.loadInterstitialAd();
 
-        // 5th level, it should show ad because counter was never reset
+        // Counter was not reset, so 5th level should trigger it
         adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
             onContinue: () => continueCount++);
-        expect(continueCount, 4);
-        currentFakeAd.simulateDismiss();
+
+        expect(continueCount, 4); // Waiting for dismiss
+        currentFakeAd!.simulateDismiss();
         expect(continueCount, 5);
       });
     });
