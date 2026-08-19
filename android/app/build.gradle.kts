@@ -1,6 +1,5 @@
 import java.util.Properties
 import java.io.FileInputStream
-import java.io.FileNotFoundException
 
 plugins {
     id("com.android.application")
@@ -8,14 +7,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
+
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-} else {
-    // Only throw in release builds, or log a warning if absent during debug?
-    // The prompt says "If key.properties is missing, provide a clear build error/instruction."
-    // We will throw the exception later inside the release signingConfig if it's missing, to allow debug builds to work without it.
+} else if (isReleaseBuild) {
+    throw GradleException("android/key.properties is missing. Required for release builds.")
 }
 
 android {
@@ -29,12 +29,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.bhushanraut.wordspark"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
@@ -45,11 +42,24 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String?
-                keyPassword = keystoreProperties["keyPassword"] as String?
-                storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
-                storePassword = keystoreProperties["storePassword"] as String?
+            if (isReleaseBuild) {
+                val storeFilePath = keystoreProperties["storeFile"] as String? ?: throw GradleException("storeFile is missing in key.properties")
+                val keystoreFile = file(storeFilePath)
+                if (!keystoreFile.exists()) {
+                    throw GradleException("The configured keystore file does not exist: " + storeFilePath)
+                }
+                val storePwd = keystoreProperties["storePassword"] as String? ?: ""
+                val keyPwd = keystoreProperties["keyPassword"] as String? ?: ""
+                val keyAl = keystoreProperties["keyAlias"] as String? ?: ""
+
+                if (storePwd.isEmpty()) throw GradleException("storePassword is empty in key.properties")
+                if (keyPwd.isEmpty()) throw GradleException("keyPassword is empty in key.properties")
+                if (keyAl.isEmpty()) throw GradleException("keyAlias is empty in key.properties")
+
+                storeFile = keystoreFile
+                storePassword = storePwd
+                keyAlias = keyAl
+                keyPassword = keyPwd
             }
         }
     }
