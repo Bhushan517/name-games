@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'audio_service.dart';
 import '../constants/app_constants.dart';
+import '../config/ad_config.dart';
 
 abstract class InterstitialAdWrapper {
   Future<void> show();
@@ -112,42 +112,12 @@ class AdService {
     clock = () => DateTime.now();
   }
 
+  final AdConfig _adConfig = const AdConfig();
+
   // --- Configuration ---
-  String get _rewardedHintAdUnitId {
-    if (kReleaseMode) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/5224354917' // TODO: Replace
-          : 'ca-app-pub-3940256099942544/1712485313'; // TODO: Replace
-    } else {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/5224354917'
-          : 'ca-app-pub-3940256099942544/1712485313';
-    }
-  }
-
-  String get _rewardedLifeAdUnitId {
-    if (kReleaseMode) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/5224354917' // TODO: Replace
-          : 'ca-app-pub-3940256099942544/1712485313'; // TODO: Replace
-    } else {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/5224354917'
-          : 'ca-app-pub-3940256099942544/1712485313';
-    }
-  }
-
-  String get _interstitialAdUnitId {
-    if (kReleaseMode) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/1033173712' // TODO: Replace
-          : 'ca-app-pub-3940256099942544/4411468910'; // TODO: Replace
-    } else {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/1033173712'
-          : 'ca-app-pub-3940256099942544/4411468910';
-    }
-  }
+  String get _rewardedHintAdUnitId => _adConfig.rewardedHintAdUnitId;
+  String get _rewardedLifeAdUnitId => _adConfig.rewardedLifeAdUnitId;
+  String get _interstitialAdUnitId => _adConfig.interstitialAdUnitId;
 
   Future<void> init() async {
     final RequestConfiguration requestConfiguration = RequestConfiguration(
