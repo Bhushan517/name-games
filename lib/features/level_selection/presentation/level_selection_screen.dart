@@ -87,7 +87,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: AudioService.withSound(() => Navigator.pop(context)),
+                    onPressed:
+                        AudioService.withSound(() => Navigator.pop(context)),
                     icon: const Icon(Icons.arrow_back_rounded),
                   ),
                   const Expanded(
@@ -158,7 +159,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         starsEarned: starsEarned,
                         onTap: isLocked
                             ? () => _openChallenge(challenge)
-                            : AudioService.withSound(() => _openChallenge(challenge))!,
+                            : AudioService.withSound(
+                                () => _openChallenge(challenge))!,
                       ),
                     ),
                   );

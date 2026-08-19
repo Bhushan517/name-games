@@ -95,7 +95,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
               Row(
                 children: [
                   IconButton(
-                    onPressed: AudioService.withSound(() => Navigator.pop(context)),
+                    onPressed:
+                        AudioService.withSound(() => Navigator.pop(context)),
                     icon: const Icon(Icons.arrow_back_rounded),
                   ),
                   const Expanded(

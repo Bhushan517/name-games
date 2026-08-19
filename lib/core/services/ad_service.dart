@@ -6,6 +6,41 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'audio_service.dart';
 import '../constants/app_constants.dart';
 
+abstract class InterstitialAdWrapper {
+  Future<void> show();
+  void dispose();
+  void setFullScreenContentCallback({
+    required void Function() onAdShowedFullScreenContent,
+    required void Function() onAdDismissedFullScreenContent,
+    required void Function(dynamic error) onAdFailedToShowFullScreenContent,
+  });
+}
+
+class GoogleMobileAdsInterstitialWrapper implements InterstitialAdWrapper {
+  final InterstitialAd _ad;
+  GoogleMobileAdsInterstitialWrapper(this._ad);
+
+  @override
+  Future<void> show() => _ad.show();
+
+  @override
+  void dispose() => _ad.dispose();
+
+  @override
+  void setFullScreenContentCallback({
+    required void Function() onAdShowedFullScreenContent,
+    required void Function() onAdDismissedFullScreenContent,
+    required void Function(dynamic error) onAdFailedToShowFullScreenContent,
+  }) {
+    _ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) => onAdShowedFullScreenContent(),
+      onAdDismissedFullScreenContent: (ad) => onAdDismissedFullScreenContent(),
+      onAdFailedToShowFullScreenContent: (ad, error) =>
+          onAdFailedToShowFullScreenContent(error),
+    );
+  }
+}
+
 class AdService {
   static AdService? _mockInstance;
   static final AdService _instance = AdService._internal();
@@ -17,9 +52,29 @@ class AdService {
 
   AdService._internal();
 
+  // Test hooks
+  @visibleForTesting
+  DateTime Function() clock = () => DateTime.now();
+
+  @visibleForTesting
+  void Function(
+    String adUnitId,
+    void Function(InterstitialAdWrapper) onAdLoaded,
+    void Function(dynamic error) onAdFailedToLoad,
+  ) interstitialLoadProvider = (adUnitId, onLoaded, onFailed) {
+    InterstitialAd.load(
+      adUnitId: adUnitId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) => onLoaded(GoogleMobileAdsInterstitialWrapper(ad)),
+        onAdFailedToLoad: (error) => onFailed(error),
+      ),
+    );
+  };
+
   RewardedAd? _rewardedHintAd;
   RewardedAd? _rewardedLifeAd;
-  InterstitialAd? _interstitialAd;
+  InterstitialAdWrapper? _interstitialAd;
 
   bool _isRewardedHintLoading = false;
   bool _isRewardedLifeLoading = false;
@@ -43,6 +98,20 @@ class AdService {
   int _interstitialRetryAttempt = 0;
 
   static const int _maxRetryAttempts = 5;
+  static const Duration _retryBaseDelay = Duration(seconds: 10);
+
+  @visibleForTesting
+  void resetStateForTest() {
+    _campaignCompletionsThisSession = 0;
+    _lastInterstitialTime = null;
+    _isInterstitialLoading = false;
+    _isInterstitialShowing = false;
+    _interstitialRetryAttempt = 0;
+    _interstitialAd = null;
+    _interstitialRetryTimer?.cancel();
+    _interstitialRetryTimer = null;
+    clock = () => DateTime.now();
+  }
 
   // --- Configuration ---
   String get _rewardedHintAdUnitId {
@@ -273,22 +342,19 @@ class AdService {
     if (_interstitialAd != null || _isInterstitialLoading) return;
     _isInterstitialLoading = true;
 
-    InterstitialAd.load(
-      adUnitId: _interstitialAdUnitId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          _interstitialAd = ad;
-          _isInterstitialLoading = false;
-          _interstitialRetryAttempt = 0;
-        },
-        onAdFailedToLoad: (error) {
-          debugPrint('InterstitialAd failed to load: $error');
-          _interstitialAd = null;
-          _isInterstitialLoading = false;
-          _scheduleInterstitialRetry();
-        },
-      ),
+    interstitialLoadProvider(
+      _interstitialAdUnitId,
+      (ad) {
+        _interstitialAd = ad;
+        _isInterstitialLoading = false;
+        _interstitialRetryAttempt = 0;
+      },
+      (error) {
+        debugPrint('InterstitialAd failed to load: $error');
+        _interstitialAd = null;
+        _isInterstitialLoading = false;
+        _scheduleInterstitialRetry();
+      },
     );
   }
 
@@ -307,13 +373,15 @@ class AdService {
   }) async {
     _campaignCompletionsThisSession++;
 
-    if (_campaignCompletionsThisSession < AppConstants.adFrequencyCampaignLevels) {
+    if (_campaignCompletionsThisSession <
+        AppConstants.adFrequencyCampaignLevels) {
       onContinue();
       return;
     }
 
     if (_lastInterstitialTime != null &&
-        DateTime.now().difference(_lastInterstitialTime!) < _interstitialCooldown) {
+        DateTime.now().difference(_lastInterstitialTime!) <
+            _interstitialCooldown) {
       onContinue();
       return;
     }
@@ -328,30 +396,39 @@ class AdService {
     }
 
     _isInterstitialShowing = true;
+    bool hasContinued = false;
+
+    void safeContinue() {
+      if (!hasContinued) {
+        hasContinued = true;
+        onContinue();
+      }
+    }
 
     AudioService().onAdShow();
-    _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) {
+    _interstitialAd!.setFullScreenContentCallback(
+      onAdShowedFullScreenContent: () {
         debugPrint('Interstitial ad showed.');
-        _lastInterstitialTime = DateTime.now();
+        _lastInterstitialTime = clock();
       },
-      onAdDismissedFullScreenContent: (ad) {
+      onAdDismissedFullScreenContent: () {
         debugPrint('Interstitial ad dismissed.');
-        ad.dispose();
+        _interstitialAd?.dispose();
         _interstitialAd = null;
         _isInterstitialShowing = false;
-        _campaignCompletionsThisSession = 0; // Only reset when successfully shown and dismissed
+        _campaignCompletionsThisSession =
+            0; // Only reset when successfully shown and dismissed
         AudioService().onAdDismiss();
-        onContinue();
+        safeContinue();
         loadInterstitialAd(); // Preload next
       },
-      onAdFailedToShowFullScreenContent: (ad, error) {
+      onAdFailedToShowFullScreenContent: (error) {
         debugPrint('Interstitial ad failed to show: $error');
-        ad.dispose();
+        _interstitialAd?.dispose();
         _interstitialAd = null;
         _isInterstitialShowing = false;
         AudioService().onAdDismiss();
-        onContinue();
+        safeContinue();
         loadInterstitialAd(); // Preload next
       },
     );

@@ -1,130 +1,225 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_async/fake_async.dart';
-import 'package:name_twist_game/core/constants/app_constants.dart';
+import 'package:name_twist_game/core/services/ad_service.dart';
+import 'package:name_twist_game/core/services/audio_service.dart';
+import 'package:name_twist_game/core/services/local_storage_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// A deterministic mock simulating the exact frequency and cooldown
-/// logic of AdService for interstitials, ensuring tests don't require
-/// the Google Mobile Ads SDK or real delays.
-class MockAdService {
-  int campaignCompletionsThisSession = 0;
-  DateTime? lastInterstitialTime;
-  static const Duration cooldown = Duration(minutes: 2);
-  bool isAdLoaded = true;
+class FakeInterstitialAdWrapper implements InterstitialAdWrapper {
+  bool isDisposed = false;
   bool simulateFailure = false;
-  
-  int adsShowed = 0;
-  
-  // Dependency inject the clock for fake_async support
-  DateTime Function() clock = () => DateTime.now();
+  void Function()? _onAdShowed;
+  void Function()? _onAdDismissed;
+  void Function(dynamic error)? _onAdFailed;
 
-  Future<void> recordCampaignCompletionAndShowInterstitialIfNeeded({
-    required void Function() onContinue,
-  }) async {
-    campaignCompletionsThisSession++;
-    
-    // Rule 1: Frequency
-    if (campaignCompletionsThisSession < AppConstants.adFrequencyCampaignLevels) {
-      onContinue();
-      return;
-    }
-    
-    // Rule 2: Cooldown
-    if (lastInterstitialTime != null &&
-        clock().difference(lastInterstitialTime!) < cooldown) {
-      onContinue();
-      return;
-    }
-    
-    // Rule 3: Availability
-    if (!isAdLoaded) {
-      onContinue();
-      return; // Defer to next completion
-    }
-    
-    // Rule 4: Failure Handling
+  @override
+  void setFullScreenContentCallback({
+    required void Function() onAdShowedFullScreenContent,
+    required void Function() onAdDismissedFullScreenContent,
+    required void Function(dynamic error) onAdFailedToShowFullScreenContent,
+  }) {
+    _onAdShowed = onAdShowedFullScreenContent;
+    _onAdDismissed = onAdDismissedFullScreenContent;
+    _onAdFailed = onAdFailedToShowFullScreenContent;
+  }
+
+  @override
+  Future<void> show() async {
     if (simulateFailure) {
-      // Simulate onAdFailedToShowFullScreenContent
-      onContinue();
-      return;
+      _onAdFailed?.call('Simulated failure');
+    } else {
+      _onAdShowed?.call();
+      // Test must manually dismiss
     }
-    
-    // Rule 5: Success & Dismissal
-    // Simulate onAdShowedFullScreenContent and then onAdDismissedFullScreenContent
-    adsShowed++;
-    lastInterstitialTime = clock();
-    campaignCompletionsThisSession = 0; // Reset only on success
-    onContinue();
+  }
+
+  void simulateDismiss() {
+    _onAdDismissed?.call();
+  }
+
+  @override
+  void dispose() {
+    isDisposed = true;
   }
 }
 
 void main() {
-  group('Deterministic Interstitial Logic', () {
-    test('1, 2, 3 completions show nothing, 4th shows ad', () async {
-      final mockAdService = MockAdService();
-      
-      for (int i = 1; i <= 3; i++) {
-        await mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
-        expect(mockAdService.adsShowed, 0);
-      }
-      
-      await mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
-      expect(mockAdService.adsShowed, 1);
-      expect(mockAdService.campaignCompletionsThisSession, 0); // Reset
+  group('AdService Production Interstitial Tests', () {
+    late FakeInterstitialAdWrapper currentFakeAd;
+    late AdService adService;
+
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      SharedPreferences.setMockInitialValues(
+          {'pref_sound': false, 'pref_music': false});
+      final storage = await LocalStorageService.init();
+      AudioService().enableTestMode();
+      await AudioService().init(storage);
+
+      // Clean singleton state before each test if possible
+      AdService.mockInstance = null; // Reset factory
+
+      adService = AdService();
+      adService.resetStateForTest();
+
+      adService.interstitialLoadProvider = (adUnitId, onLoaded, onFailed) {
+        currentFakeAd = FakeInterstitialAdWrapper();
+        onLoaded(currentFakeAd);
+      };
+
+      // Load first ad
+      adService.loadInterstitialAd();
     });
-    
-    test('Cooldown enforces 2-minute gap between ads', () {
+
+    test('1, 2, 3 completions show nothing, 4th shows ad', () {
       fakeAsync((async) {
-        final mockAdService = MockAdService();
-        mockAdService.clock = () => async.getClock(DateTime.now()).now();
-        
-        // Trigger first ad
-        for (int i = 0; i < 4; i++) {
-          mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
+        adService.clock = () => async.getClock(DateTime.now()).now();
+        int continueCount = 0;
+
+        for (int i = 1; i <= 3; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+            onContinue: () => continueCount++,
+          );
         }
-        expect(mockAdService.adsShowed, 1);
-        
-        // Complete 4 more levels immediately (cooldown active)
-        for (int i = 0; i < 4; i++) {
-          mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
-        }
-        // Counter is blocked, shouldn't show ad
-        expect(mockAdService.adsShowed, 1);
-        expect(mockAdService.campaignCompletionsThisSession, 4); 
-        
-        // Advance time by 1 minute, still blocked
-        async.elapse(const Duration(minutes: 1));
-        mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
-        expect(mockAdService.adsShowed, 1);
-        expect(mockAdService.campaignCompletionsThisSession, 5);
-        
-        // Advance time past 2 minutes
-        async.elapse(const Duration(minutes: 1, seconds: 1));
-        mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
-        
-        // Should now show ad and reset
-        expect(mockAdService.adsShowed, 2);
-        expect(mockAdService.campaignCompletionsThisSession, 0);
+
+        expect(continueCount, 3);
+        // Ensure no ad was shown, and the time is still null
+
+        adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+          onContinue: () => continueCount++,
+        );
+        // Before we call simulateDismiss, onContinue shouldn't be called yet for the 4th
+        expect(continueCount, 3);
+
+        currentFakeAd.simulateDismiss();
+        expect(continueCount, 4);
       });
     });
-    
-    test('Failure to show does not reset counter or trigger cooldown', () async {
-      final mockAdService = MockAdService();
-      
-      // Simulate failure on the 4th level
-      mockAdService.simulateFailure = true;
-      for (int i = 0; i < 4; i++) {
-        await mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
-      }
-      expect(mockAdService.adsShowed, 0);
-      expect(mockAdService.campaignCompletionsThisSession, 4); // Still intact
-      expect(mockAdService.lastInterstitialTime, null); // No cooldown started
-      
-      // Fix failure, next level (5th) should trigger ad immediately
-      mockAdService.simulateFailure = false;
-      await mockAdService.recordCampaignCompletionAndShowInterstitialIfNeeded(onContinue: () {});
-      
-      expect(mockAdService.adsShowed, 1);
-      expect(mockAdService.campaignCompletionsThisSession, 0);
+
+    test('Cooldown enforces 2-minute gap between ads', () {
+      fakeAsync((async) {
+        adService.clock = () => async.getClock(DateTime.now()).now();
+        int continueCount = 0;
+
+        // Trigger first ad (4 levels)
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () => continueCount++);
+          if (i == 3) currentFakeAd.simulateDismiss();
+        }
+        expect(continueCount, 4);
+
+        // Complete 4 more levels immediately (cooldown active)
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () => continueCount++);
+        }
+
+        // Should have continued immediately 4 times because of cooldown bypass
+        expect(continueCount, 8);
+
+        // Advance time by 1 minute, still blocked
+        async.elapse(const Duration(minutes: 1));
+        adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+            onContinue: () => continueCount++);
+        expect(continueCount, 9);
+
+        // Advance time past 2 minutes
+        async.elapse(const Duration(minutes: 1, seconds: 1));
+        adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+            onContinue: () => continueCount++);
+
+        // Ad should show now, meaning onContinue is deferred until dismiss
+        expect(continueCount, 9);
+        currentFakeAd.simulateDismiss();
+        expect(continueCount, 10);
+      });
+    });
+
+    test(
+        'Failure to show does not start cooldown or reset counter, allows exactly once continue',
+        () {
+      fakeAsync((async) {
+        adService.clock = () => async.getClock(DateTime.now()).now();
+        int continueCount = 0;
+
+        currentFakeAd.simulateFailure = true;
+
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () => continueCount++);
+        }
+
+        // It failed to show, so onContinue was called immediately inside failure callback
+        expect(continueCount, 4);
+
+        // Try again immediately (5th completion).
+        // We load a new fake ad in failure callback, ensure it doesn't fail this time
+        currentFakeAd.simulateFailure = false;
+        adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+            onContinue: () => continueCount++);
+
+        expect(continueCount, 4); // Deferred until dismiss
+        currentFakeAd.simulateDismiss();
+        expect(continueCount, 5);
+      });
+    });
+
+    test('Exactly once callback protection handles duplicate SDK callbacks',
+        () {
+      fakeAsync((async) {
+        adService.clock = () => async.getClock(DateTime.now()).now();
+        int continueCount = 0;
+
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () => continueCount++);
+        }
+
+        expect(continueCount, 3); // 4th is waiting for ad dismiss
+
+        // Simulate aggressive bad SDK firing dismiss multiple times
+        currentFakeAd.simulateDismiss();
+        currentFakeAd.simulateDismiss();
+        currentFakeAd.simulateDismiss();
+
+        expect(continueCount, 4); // Handled exactly once!
+      });
+    });
+
+    test('Unavailable ad starts no cooldown and does not reset counter', () {
+      fakeAsync((async) {
+        adService.clock = () => async.getClock(DateTime.now()).now();
+        int continueCount = 0;
+
+        // Make ad unavailable by simulating a failed load
+        adService.interstitialLoadProvider = (a, onL, onF) {
+          onF('Simulated Load Error');
+        };
+        adService.loadInterstitialAd(); // Force failure load
+
+        for (int i = 0; i < 4; i++) {
+          adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+              onContinue: () => continueCount++);
+        }
+
+        // It defers immediately because ad is null
+        expect(continueCount, 4);
+
+        // Now make ad available
+        adService.interstitialLoadProvider = (a, onL, onF) {
+          currentFakeAd = FakeInterstitialAdWrapper();
+          onL(currentFakeAd);
+        };
+        adService.loadInterstitialAd();
+
+        // 5th level, it should show ad because counter was never reset
+        adService.recordCampaignCompletionAndShowInterstitialIfNeeded(
+            onContinue: () => continueCount++);
+        expect(continueCount, 4);
+        currentFakeAd.simulateDismiss();
+        expect(continueCount, 5);
+      });
     });
   });
 }

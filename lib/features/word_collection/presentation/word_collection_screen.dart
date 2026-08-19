@@ -73,7 +73,8 @@ class _WordCollectionScreenState extends State<WordCollectionScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: AudioService.withSound(() => Navigator.pop(context)),
+                    onPressed:
+                        AudioService.withSound(() => Navigator.pop(context)),
                     icon: const Icon(Icons.arrow_back_rounded),
                   ),
                   Expanded(

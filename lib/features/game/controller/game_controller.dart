@@ -283,7 +283,7 @@ class GameController extends ChangeNotifier {
       if (_timeRemaining <= 5 && _timeRemaining > 0) {
         AudioService().playSfx('timer_tick.wav', volume: 0.3);
       }
-      
+
       if (_timeRemaining <= 0) {
         timer.cancel();
         _handleTimeout();
@@ -350,7 +350,7 @@ class GameController extends ChangeNotifier {
 
   void grantHint() {
     if (!canUseHint) return;
-    
+
     AudioService().playSfx('hint_reveal.wav');
 
     if (mode == ChallengeMode.missingLetter) {

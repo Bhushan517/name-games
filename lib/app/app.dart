@@ -19,7 +19,8 @@ class SpellShapeQuestApp extends StatefulWidget {
   State<SpellShapeQuestApp> createState() => _SpellShapeQuestAppState();
 }
 
-class _SpellShapeQuestAppState extends State<SpellShapeQuestApp> with WidgetsBindingObserver {
+class _SpellShapeQuestAppState extends State<SpellShapeQuestApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -39,7 +40,8 @@ class _SpellShapeQuestAppState extends State<SpellShapeQuestApp> with WidgetsBin
     if (state == AppLifecycleState.detached) {
       AudioService().disposeAll();
       TtsService.dispose();
-    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       TtsService.stop();
       AudioService().onAppPaused();
     } else if (state == AppLifecycleState.resumed) {

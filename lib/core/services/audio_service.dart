@@ -2,7 +2,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/widgets.dart';
 import 'local_storage_service.dart';
 
-
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
@@ -19,13 +18,13 @@ class AudioService {
   bool _isDucking = false;
   bool _isAdShowing = false;
   bool _isTestMode = false;
-  
+
   final List<String> testPlayedSfx = [];
-  
+
   void enableTestMode() {
     _isTestMode = true;
   }
-  
+
   String? get currentBgmTrack => _currentBgmTrack;
   bool get isAppPaused => _isAppPaused;
   bool get isDucking => _isDucking;
@@ -38,11 +37,12 @@ class AudioService {
     final progress = storageService.loadPlayerProgress();
     _musicEnabled = progress.musicEnabled;
     _soundEnabled = progress.soundEnabled;
-    
+
     if (_isTestMode) return;
 
     _bgmPlayer = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
-    _sfxPlayers = List.generate(4, (_) => AudioPlayer()..setReleaseMode(ReleaseMode.stop));
+    _sfxPlayers = List.generate(
+        4, (_) => AudioPlayer()..setReleaseMode(ReleaseMode.stop));
   }
 
   Future<void> setMusicEnabled(bool enabled) async {
@@ -69,16 +69,19 @@ class AudioService {
       return;
     }
     if (_currentBgmTrack == assetName) {
-      if (_bgmPlayer?.state != PlayerState.playing && _musicEnabled && !_isAppPaused && !_isAdShowing) {
+      if (_bgmPlayer?.state != PlayerState.playing &&
+          _musicEnabled &&
+          !_isAppPaused &&
+          !_isAdShowing) {
         await _bgmPlayer?.resume();
       }
       return;
     }
-    
+
     _currentBgmTrack = assetName;
     await _bgmPlayer?.setVolume(_isDucking ? volume * 0.3 : volume);
     await _bgmPlayer?.setSource(AssetSource('audio/music/$assetName'));
-    
+
     if (_musicEnabled && !_isAppPaused && !_isAdShowing) {
       await _bgmPlayer?.resume();
     }
@@ -95,7 +98,7 @@ class AudioService {
 
     final player = _sfxPlayers![_sfxIndex];
     _sfxIndex = (_sfxIndex + 1) % _sfxPlayers!.length;
-    
+
     await player.setVolume(volume);
     await player.play(AssetSource('audio/sfx/$assetName'));
   }
@@ -109,7 +112,10 @@ class AudioService {
 
   Future<void> resumeBgm() async {
     if (_isTestMode) return;
-    if (_musicEnabled && _currentBgmTrack != null && !_isAppPaused && !_isAdShowing) {
+    if (_musicEnabled &&
+        _currentBgmTrack != null &&
+        !_isAppPaused &&
+        !_isAdShowing) {
       await _bgmPlayer?.resume();
     }
   }
@@ -142,7 +148,7 @@ class AudioService {
       await _bgmPlayer?.setVolume(0.25);
     }
   }
-  
+
   void onAdShow() {
     _isAdShowing = true;
     pauseBgm();

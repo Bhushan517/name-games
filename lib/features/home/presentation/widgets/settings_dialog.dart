@@ -40,7 +40,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SwitchListTile(
-            title: const Text('Background Music', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text('Background Music',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             value: _musicEnabled,
             activeThumbColor: AppColors.cyan,
             onChanged: (val) {
@@ -51,7 +52,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
             },
           ),
           SwitchListTile(
-            title: const Text('Sound Effects', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text('Sound Effects',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             value: _soundEnabled,
             activeThumbColor: AppColors.cyan,
             onChanged: (val) {

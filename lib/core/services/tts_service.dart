@@ -10,13 +10,46 @@ import 'audio_service.dart';
 ///   await TtsService.speak('EAGLE');
 ///   TtsService.stop();
 ///   TtsService.dispose();
+abstract class TtsEngine {
+  Future<void> setLanguage(String language);
+  Future<void> setSpeechRate(double rate);
+  Future<void> setVolume(double volume);
+  Future<void> setPitch(double pitch);
+  Future<void> awaitSpeakCompletion(bool awaitCompletion);
+  Future<void> speak(String text);
+  Future<void> stop();
+}
+
+class FlutterTtsEngine implements TtsEngine {
+  final FlutterTts _tts = FlutterTts();
+
+  @override
+  Future<void> setLanguage(String language) => _tts.setLanguage(language);
+  @override
+  Future<void> setSpeechRate(double rate) => _tts.setSpeechRate(rate);
+  @override
+  Future<void> setVolume(double volume) => _tts.setVolume(volume);
+  @override
+  Future<void> setPitch(double pitch) => _tts.setPitch(pitch);
+  @override
+  Future<void> awaitSpeakCompletion(bool awaitCompletion) =>
+      _tts.awaitSpeakCompletion(awaitCompletion);
+  @override
+  Future<void> speak(String text) => _tts.speak(text);
+  @override
+  Future<void> stop() => _tts.stop();
+}
+
 class TtsService {
   TtsService._();
 
-  static FlutterTts? _tts;
+  static TtsEngine? _tts;
   static bool _isPlaying = false;
   static bool _initialized = false;
   static int _speechToken = 0;
+
+  @visibleForTesting
+  static TtsEngine Function() engineProvider = () => FlutterTtsEngine();
 
   static bool get isPlaying => _isPlaying;
 
@@ -24,7 +57,7 @@ class TtsService {
   static Future<void> init() async {
     if (_initialized) return;
     try {
-      _tts = FlutterTts();
+      _tts = engineProvider();
       await _tts!.setLanguage('en-US');
       await _tts!.setSpeechRate(0.45); // slightly slower for children
       await _tts!.setVolume(1.0);
@@ -47,16 +80,16 @@ class TtsService {
     try {
       await init();
       if (_tts == null) return;
-      
+
       stop();
       _speechToken++;
       final currentToken = _speechToken;
-      
+
       _isPlaying = true;
       AudioService().duckBgmForTts();
-      
+
       await _tts!.speak(word);
-      
+
       if (currentToken == _speechToken) {
         _isPlaying = false;
         AudioService().unduckBgmFromTts();
@@ -85,5 +118,14 @@ class TtsService {
     stop();
     _tts = null;
     _initialized = false;
+  }
+
+  @visibleForTesting
+  static void resetStateForTest() {
+    _tts = null;
+    _isPlaying = false;
+    _initialized = false;
+    _speechToken = 0;
+    engineProvider = () => FlutterTtsEngine();
   }
 }

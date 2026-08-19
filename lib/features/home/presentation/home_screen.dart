@@ -95,16 +95,17 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   IconButton(
                     onPressed: AudioService.withSound(() => showDialog<void>(
-                      context: context,
-                      builder: (_) => SettingsDialog(storageService: widget.storageService),
-                    )),
+                          context: context,
+                          builder: (_) => SettingsDialog(
+                              storageService: widget.storageService),
+                        )),
                     icon: const Icon(Icons.settings_rounded),
                   ),
                   IconButton(
                     onPressed: AudioService.withSound(() => showDialog<void>(
-                      context: context,
-                      builder: (_) => const HelpDialog(),
-                    )),
+                          context: context,
+                          builder: (_) => const HelpDialog(),
+                        )),
                     icon: const Icon(Icons.help_outline_rounded),
                   ),
                 ],

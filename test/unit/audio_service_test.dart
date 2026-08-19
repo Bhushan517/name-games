@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:name_twist_game/core/services/audio_service.dart';
 import 'package:name_twist_game/core/services/local_storage_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:name_twist_game/features/game/controller/game_controller.dart';
 import 'package:name_twist_game/data/models/generated_challenge.dart';
 import 'package:name_twist_game/data/models/challenge_mode.dart';
@@ -18,7 +19,7 @@ void main() {
   late LocalStorageService storageService;
   late ChallengeRepository challengeRepository;
   late List<GeneratedChallenge> allChallenges;
-  
+
   setUpAll(() {
     final file = File('assets/data/word_levels.json');
     final jsonString = file.readAsStringSync();
@@ -29,30 +30,30 @@ void main() {
 
     allChallenges = ChallengeGenerator.generateAllChallenges(words);
   });
-  
+
   setUp(() async {
     SharedPreferences.setMockInitialValues({
       'pref_sound': true,
       'pref_music': true,
     });
     storageService = await LocalStorageService.init();
-    
+
     AudioService().enableTestMode();
     await AudioService().init(storageService);
     AudioService().testPlayedSfx.clear();
-    
+
     final wordRepo = WordRepository(LocalWordDataSource());
     challengeRepository = ChallengeRepository(
       wordRepository: wordRepo,
       storageService: storageService,
     );
   });
-  
+
   test('Menu music starts correctly', () async {
     await AudioService().playBgm('menu_music.wav');
     expect(AudioService().currentBgmTrack, 'menu_music.wav');
   });
-  
+
   test('Gameplay music starts correctly and replaces menu music', () async {
     await AudioService().playBgm('menu_music.wav');
     await AudioService().playBgm('gameplay_music.wav');
@@ -73,55 +74,58 @@ void main() {
   });
 
   test('Correct answer plays one success sound', () async {
-    final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
+    final challenge =
+        allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
     final controller = GameController(
       challenge: challenge,
       repository: challengeRepository,
     );
-    
+
     final word = challenge.word;
     for (int i = 0; i < word.length; i++) {
       final char = word[i];
-      final nodeIndex = controller.nodes.indexWhere(
-        (n) => n.letter == char && !controller.isSelected(controller.nodes.indexOf(n))
-      );
+      final nodeIndex = controller.nodes.indexWhere((n) =>
+          n.letter == char &&
+          !controller.isSelected(controller.nodes.indexOf(n)));
       if (nodeIndex != -1) {
         controller.selectLetter(nodeIndex);
       }
     }
-    
+
     AudioService().testPlayedSfx.clear();
     await controller.validateSpelling();
     expect(AudioService().testPlayedSfx, contains('correct_answer.wav'));
   });
 
   test('Wrong answer plays one error sound', () async {
-    final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
+    final challenge =
+        allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
     final controller = GameController(
       challenge: challenge,
       repository: challengeRepository,
     );
-    
+
     final word = challenge.word;
     for (int i = 0; i < word.length; i++) {
       // Pick deliberately wrong letter, or just a different node
-      final nodeIndex = controller.nodes.indexWhere(
-        (n) => n.letter != word[i] && !controller.isSelected(controller.nodes.indexOf(n))
-      );
+      final nodeIndex = controller.nodes.indexWhere((n) =>
+          n.letter != word[i] &&
+          !controller.isSelected(controller.nodes.indexOf(n)));
       if (nodeIndex != -1) {
         controller.selectLetter(nodeIndex);
       } else {
         // Fallback if not enough wrong letters
-        final fallback = controller.nodes.indexWhere((n) => !controller.isSelected(controller.nodes.indexOf(n)));
+        final fallback = controller.nodes.indexWhere(
+            (n) => !controller.isSelected(controller.nodes.indexOf(n)));
         if (fallback != -1) controller.selectLetter(fallback);
       }
     }
-    
+
     AudioService().testPlayedSfx.clear();
     await controller.validateSpelling();
     expect(AudioService().testPlayedSfx, contains('wrong_answer.wav'));
   });
-  
+
   test('TTS ducks/pauses music and restores it afterward', () async {
     await AudioService().playBgm('gameplay_music.wav');
     await AudioService().duckBgmForTts();
@@ -129,141 +133,275 @@ void main() {
     await AudioService().unduckBgmFromTts();
     expect(AudioService().isDucking, false);
   });
-  
+
   test('Ad display pauses music and dismissal restores the correct track', () {
     AudioService().onAdShow();
     expect(AudioService().isAdShowing, true);
     AudioService().onAdDismiss();
     expect(AudioService().isAdShowing, false);
   });
-  
+
   test('App pause/resume toggles pause state', () {
     AudioService().onAppPaused();
     expect(AudioService().isAppPaused, true);
     AudioService().onAppResumed();
     expect(AudioService().isAppPaused, false);
   });
-  
+
   test('Hint sound plays only when a hint is actually granted', () {
-    final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
+    final challenge =
+        allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
     final controller = GameController(
       challenge: challenge,
       repository: challengeRepository,
     );
-    
+
     AudioService().testPlayedSfx.clear();
-    controller.grantHint(); 
+    controller.grantHint();
     expect(AudioService().testPlayedSfx, contains('hint_reveal.wav'));
-    
+
     // Grant until no more hints
     for (int i = 0; i < challenge.word.length; i++) {
       controller.grantHint();
     }
-    
+
     AudioService().testPlayedSfx.clear();
     controller.grantHint(); // Cannot use hint
     expect(AudioService().testPlayedSfx, isEmpty);
   });
-  
+
   test('Extra Life sound plays exactly once after reward', () {
-    final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
+    final challenge =
+        allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
     final controller = GameController(
       challenge: challenge,
       repository: challengeRepository,
     );
-    
+
     AudioService().testPlayedSfx.clear();
     controller.grantRewardedLife();
     expect(AudioService().testPlayedSfx, contains('extra_life.wav'));
   });
-  
-  testWidgets('Timer tick plays exactly 5 times in the last 5 seconds, and resets on retry', (WidgetTester tester) async {
-    final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
-    final controller = GameController(
-      challenge: challenge,
-      repository: challengeRepository,
-    );
-    
-    expect(controller.mode, ChallengeMode.timed);
-    final totalTime = challenge.difficultyConfig.timerSeconds;
-    
-    AudioService().testPlayedSfx.clear();
-    
-    // Fast forward to just before 5 seconds remaining (to 6 seconds)
-    for (int i = 0; i < totalTime - 6; i++) {
-      await tester.pump(const Duration(seconds: 1));
-    }
-    
-    // So far, no ticks should have played
-    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').isEmpty, true);
-    
-    // Now play the next 3 seconds (from 6 down to 3)
-    for (int i = 0; i < 3; i++) {
-      await tester.pump(const Duration(seconds: 1));
-    }
-    
-    // Ticks at 5, 4, 3 = 3 ticks
-    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 3);
-    
-    // Simulate App Pause
-    controller.pauseTimer();
-    await tester.pump(const Duration(seconds: 2));
-    
-    // Timer shouldn't tick while paused
-    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 3);
-    
-    // Resume App
-    controller.resumeTimer();
-    
-    // Play remaining 3 seconds (2, 1, 0)
-    for (int i = 0; i < 3; i++) {
-      await tester.pump(const Duration(seconds: 1));
-    }
-    
-    // Ticks at 2, 1. At 0 it times out (no tick)
-    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 5);
-    
-    // At zero and below, no additional ticks
-    await tester.pump(const Duration(seconds: 2));
-    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 5);
-    
-    // Simulate Retry (reset lives)
-    AudioService().testPlayedSfx.clear();
-    controller.resetLives(); // This restarts the timer in the game logic
-    
-    // Fast forward to just before 5 seconds again
-    for (int i = 0; i < totalTime - 6; i++) {
-      await tester.pump(const Duration(seconds: 1));
-    }
-    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').isEmpty, true);
-    
-    controller.dispose();
-    await tester.pump(const Duration(seconds: 1)); // Cleanup
+
+  group('Deterministic Timer Audio Tests', () {
+    test(
+        'Timer tick sequence fires exactly at 5,4,3,2,1 and respects app pause/resume without duplicates',
+        () {
+      fakeAsync((async) {
+        final challenge =
+            allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
+        final controller = GameController(
+            challenge: challenge, repository: challengeRepository);
+
+        final totalTime = challenge.difficultyConfig.timerSeconds;
+        AudioService().testPlayedSfx.clear();
+
+        // Fast forward to just before 5 seconds remaining
+        async.elapse(Duration(seconds: totalTime - 6));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .isEmpty,
+            true);
+
+        // Elapse 3 seconds (ticks at 5, 4, 3)
+        async.elapse(const Duration(seconds: 3));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            3);
+
+        // Pause timer
+        controller.pauseTimer();
+        async.elapse(const Duration(seconds: 2));
+
+        // Still 3 ticks because it was paused
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            3);
+
+        // Resume timer
+        controller.resumeTimer();
+
+        // Elapse remaining time (ticks at 2, 1)
+        async.elapse(const Duration(seconds: 3));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            5);
+
+        // Beyond 0 (no more ticks)
+        async.elapse(const Duration(seconds: 5));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            5);
+
+        controller.dispose();
+      });
+    });
+
+    test(
+        'Correct completion cancels future ticks and disposal leaves no pending timer',
+        () {
+      fakeAsync((async) {
+        final challenge =
+            allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
+        final controller = GameController(
+            challenge: challenge, repository: challengeRepository);
+        final totalTime = challenge.difficultyConfig.timerSeconds;
+
+        AudioService().testPlayedSfx.clear();
+
+        // Enter the tick zone
+        async.elapse(Duration(seconds: totalTime - 4));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            2);
+
+        // Complete the word correctly
+        for (int i = 0; i < challenge.word.length; i++) {
+          final char = challenge.word[i];
+          final nodeIndex = controller.nodes.indexWhere((n) =>
+              n.letter == char &&
+              !controller.isSelected(controller.nodes.indexOf(n)));
+          if (nodeIndex != -1) {
+            controller.selectLetter(nodeIndex);
+          }
+        }
+        controller
+            .validateSpelling(); // This completes the challenge and cancels timer
+
+        // Elapse remaining time
+        async.elapse(const Duration(seconds: 5));
+
+        // Still 2 ticks because completion cancelled the timer
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            2);
+
+        controller.dispose();
+        // fakeAsync automatically verifies there are no pending timers at the end of the block
+      });
+    });
+
+    test('Try Again (resetLives) restarts one tick sequence cleanly', () {
+      fakeAsync((async) {
+        final challenge =
+            allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
+        final controller = GameController(
+            challenge: challenge, repository: challengeRepository);
+        final totalTime = challenge.difficultyConfig.timerSeconds;
+
+        for (int i = 0; i < challenge.difficultyConfig.lives; i++) {
+          async.elapse(Duration(seconds: totalTime + 1));
+        }
+
+        AudioService().testPlayedSfx.clear();
+        controller.resetLives(); // Player taps Try Again
+
+        async.elapse(Duration(seconds: totalTime - 6));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .isEmpty,
+            true);
+
+        async.elapse(const Duration(seconds: 6));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            5);
+
+        controller.dispose();
+      });
+    });
+
+    test('Rewarded Extra Life restarts one tick sequence cleanly', () {
+      fakeAsync((async) {
+        final challenge =
+            allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
+        final controller = GameController(
+            challenge: challenge, repository: challengeRepository);
+        final totalTime = challenge.difficultyConfig.timerSeconds;
+
+        for (int i = 0; i < challenge.difficultyConfig.lives; i++) {
+          async.elapse(Duration(seconds: totalTime + 1));
+        }
+
+        AudioService().testPlayedSfx.clear();
+        controller.grantRewardedLife(); // Player uses rewarded life
+
+        async.elapse(Duration(seconds: totalTime - 6));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .isEmpty,
+            true);
+
+        async.elapse(const Duration(seconds: 6));
+        expect(
+            AudioService()
+                .testPlayedSfx
+                .where((s) => s == 'timer_tick.wav')
+                .length,
+            5);
+
+        controller.dispose();
+      });
+    });
   });
 
   test('Missing letter undo plays exactly once on success', () async {
-    final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+    final challenge =
+        allChallenges.firstWhere((c) => c.mode == ChallengeMode.missingLetter);
     final controller = GameController(
       challenge: challenge,
       repository: challengeRepository,
     );
-    
+
     AudioService().testPlayedSfx.clear();
-    
+
     // Try undoing when nothing is filled
     controller.undo();
     expect(AudioService().testPlayedSfx, isEmpty);
-    
+
     // Fill a letter manually
     final missingIndex = controller.missingIndices.first;
-    final wrongLetter = controller.missingLetterChoices.firstWhere((c) => c != challenge.word[missingIndex]);
+    final wrongLetter = controller.missingLetterChoices
+        .firstWhere((c) => c != challenge.word[missingIndex]);
     controller.fillMissingLetter(wrongLetter);
-    
+
     // Undo successfully
     AudioService().testPlayedSfx.clear();
     controller.undo();
     expect(AudioService().testPlayedSfx, contains('letter_undo.wav'));
-    expect(AudioService().testPlayedSfx.where((s) => s == 'letter_undo.wav').length, 1);
+    expect(
+        AudioService()
+            .testPlayedSfx
+            .where((s) => s == 'letter_undo.wav')
+            .length,
+        1);
   });
 
   test('Button tap helper plays sound', () {

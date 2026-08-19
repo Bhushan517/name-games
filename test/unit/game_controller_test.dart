@@ -18,6 +18,20 @@ class FakeAdService implements AdService {
   bool shouldGrantReward = true;
   int hintsEarned = 0;
   int livesEarned = 0;
+  int rewardedHintCount = 0;
+  int rewardedLifeCount = 0;
+  int interstitialCount = 0;
+  bool isInterstitialReady = true;
+
+  @override
+  DateTime Function() clock = () => DateTime.now();
+
+  @override
+  void Function(
+    String adUnitId,
+    void Function(InterstitialAdWrapper) onAdLoaded,
+    void Function(dynamic error) onAdFailedToLoad,
+  ) interstitialLoadProvider = (a, b, c) {};
 
   @override
   Future<void> init() async {}
@@ -216,8 +230,8 @@ void main() {
 
       expect(controller.selectedIndices[1],
           isNot(equals(controller.selectedIndices[2])));
-        expect(controller.nodes[controller.selectedIndices[1]!].letter, 'P');
-        expect(controller.nodes[controller.selectedIndices[2]!].letter, 'P');
+      expect(controller.nodes[controller.selectedIndices[1]!].letter, 'P');
+      expect(controller.nodes[controller.selectedIndices[2]!].letter, 'P');
     });
 
     test('Hints and manual selections assemble the correct final word',

@@ -228,7 +228,8 @@ class _GameScreenState extends State<GameScreen>
                     child: Row(
                       children: [
                         IconButton(
-                          onPressed: AudioService.withSound(() => Navigator.pop(context)),
+                          onPressed: AudioService.withSound(
+                              () => Navigator.pop(context)),
                           icon: const Icon(Icons.close_rounded),
                         ),
                         Expanded(
