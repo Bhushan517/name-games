@@ -1,7 +1,7 @@
 class AppStrings {
   AppStrings._();
 
-  static const String appName = 'Spell & Shape Quest';
+  static const String appName = 'WordSpark';
   static const String appSubtitle = 'Learn • Connect • Reveal';
   static const String heroTitle = 'WORDS CREATE MAGIC';
   static const String heroSubtitle = 'Unscramble the word. Reveal the shape.';

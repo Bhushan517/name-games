@@ -1,4 +1,4 @@
-# 🎮 Spell & Shape Quest
+# 🎮 WordSpark
 
 > An animated, educational spelling and hidden-pattern puzzle game for children aged 7–13. Built with Flutter, zero backend, offline-first.
 

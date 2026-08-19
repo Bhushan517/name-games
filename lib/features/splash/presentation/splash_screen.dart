@@ -110,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     const SizedBox(height: 28),
                     const Text(
-                      'SPELL & SHAPE',
+                      'WORDSPARK',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,

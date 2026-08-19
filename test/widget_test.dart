@@ -18,7 +18,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  group('Spell & Shape Quest 500-Level Engine Flow Tests', () {
+  group('WordSpark 500-Level Engine Flow Tests', () {
     late List<WordContent> testWords;
     late List<GeneratedChallenge> testChallenges;
 
