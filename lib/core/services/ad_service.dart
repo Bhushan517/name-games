@@ -307,40 +307,24 @@ class AdService {
   }) async {
     _campaignCompletionsThisSession++;
 
-    if (_campaignCompletionsThisSession >=
-            AppConstants.adFrequencyCampaignLevels &&
-        _interstitialAd != null) {
-      AudioService().onAdShow();
-      _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-        onAdDismissedFullScreenContent: (ad) {
-          ad.dispose();
-          _interstitialAd = null;
-          _campaignCompletionsThisSession = 0;
-          loadInterstitialAd();
-          AudioService().onAdDismiss();
-          onContinue();
-        },
-        onAdFailedToShowFullScreenContent: (ad, error) {
-          ad.dispose();
-          _interstitialAd = null;
-          AudioService().onAdDismiss();
-          onContinue();
-        },
-      );
-      await _interstitialAd!.show();
-    } else {
+    if (_campaignCompletionsThisSession < AppConstants.adFrequencyCampaignLevels) {
       onContinue();
+      return;
     }
-  }
 
-  void _showInterstitialAd({required VoidCallback onAdClosed}) {
+    if (_lastInterstitialTime != null &&
+        DateTime.now().difference(_lastInterstitialTime!) < _interstitialCooldown) {
+      onContinue();
+      return;
+    }
+
     if (_interstitialAd == null ||
         _isInterstitialShowing ||
         _isRewardedHintShowing ||
         _isRewardedLifeShowing) {
-      debugPrint('Warning: attempt to show interstitial ad blocked.');
-      onAdClosed();
-      return;
+      debugPrint('Interstitial not ready or blocked, deferring.');
+      onContinue();
+      return; // Do not reset completion counter; try again next level
     }
 
     _isInterstitialShowing = true;
@@ -348,15 +332,15 @@ class AdService {
 
     AudioService().onAdShow();
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) =>
-          debugPrint('Interstitial ad showed.'),
+      onAdShowedFullScreenContent: (ad) => debugPrint('Interstitial ad showed.'),
       onAdDismissedFullScreenContent: (ad) {
         debugPrint('Interstitial ad dismissed.');
         ad.dispose();
         _interstitialAd = null;
         _isInterstitialShowing = false;
+        _campaignCompletionsThisSession = 0; // Only reset when successfully shown and dismissed
         AudioService().onAdDismiss();
-        onAdClosed();
+        onContinue();
         loadInterstitialAd(); // Preload next
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
@@ -365,12 +349,12 @@ class AdService {
         _interstitialAd = null;
         _isInterstitialShowing = false;
         AudioService().onAdDismiss();
-        onAdClosed();
+        onContinue();
         loadInterstitialAd(); // Preload next
       },
     );
 
-    _interstitialAd!.show();
+    await _interstitialAd!.show();
   }
 
   void dispose() {

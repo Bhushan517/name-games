@@ -5,6 +5,7 @@ import 'routes/app_router.dart';
 import 'routes/route_names.dart';
 
 import '../core/services/audio_service.dart';
+import '../core/services/tts_service.dart';
 
 class SpellShapeQuestApp extends StatefulWidget {
   const SpellShapeQuestApp({
@@ -28,12 +29,17 @@ class _SpellShapeQuestAppState extends State<SpellShapeQuestApp> with WidgetsBin
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AudioService().disposeAll();
+    TtsService.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+    if (state == AppLifecycleState.detached) {
+      AudioService().disposeAll();
+      TtsService.dispose();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       AudioService().onAppPaused();
     } else if (state == AppLifecycleState.resumed) {
       AudioService().onAppResumed();

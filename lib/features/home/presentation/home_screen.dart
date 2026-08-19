@@ -94,17 +94,17 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                   IconButton(
-                    onPressed: () => showDialog<void>(
+                    onPressed: AudioService.withSound(() => showDialog<void>(
                       context: context,
                       builder: (_) => SettingsDialog(storageService: widget.storageService),
-                    ),
+                    )),
                     icon: const Icon(Icons.settings_rounded),
                   ),
                   IconButton(
-                    onPressed: () => showDialog<void>(
+                    onPressed: AudioService.withSound(() => showDialog<void>(
                       context: context,
                       builder: (_) => const HelpDialog(),
-                    ),
+                    )),
                     icon: const Icon(Icons.help_outline_rounded),
                   ),
                 ],
@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen>
                           width: double.infinity,
                           height: 56,
                           child: FilledButton.icon(
-                            onPressed: () async {
+                            onPressed: AudioService.withSound(() async {
                               await Navigator.pushNamed(
                                 context,
                                 RouteNames.levelSelection,
@@ -229,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen>
                               if (mounted) {
                                 _refreshStats();
                               }
-                            },
+                            }),
                             icon: const Icon(
                               Icons.play_arrow_rounded,
                               size: 28,
@@ -251,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen>
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: () async {
+                                onPressed: AudioService.withSound(() async {
                                   await Navigator.pushNamed(
                                     context,
                                     RouteNames.dailyChallenge,
@@ -259,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   if (mounted) {
                                     _refreshStats();
                                   }
-                                },
+                                }),
                                 style: OutlinedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
@@ -286,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(width: 10),
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: () async {
+                                onPressed: AudioService.withSound(() async {
                                   await Navigator.pushNamed(
                                     context,
                                     RouteNames.wordCollection,
@@ -294,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   if (mounted) {
                                     _refreshStats();
                                   }
-                                },
+                                }),
                                 style: OutlinedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),

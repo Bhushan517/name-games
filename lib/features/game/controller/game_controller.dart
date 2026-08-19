@@ -240,6 +240,7 @@ class GameController extends ChangeNotifier {
         .toList()
       ..sort();
     if (manualKeys.isNotEmpty) {
+      AudioService().playSfx('letter_undo.wav');
       _filledMissingLetters.remove(manualKeys.last);
       _validationState = GameValidationState.initial;
       notifyListeners();

@@ -67,11 +67,7 @@ class WordCard extends StatelessWidget {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                onPressed: () => TtsService.speak(
-                  word.pronunciation.isNotEmpty
-                      ? word.pronunciation
-                      : word.word,
-                ),
+                onPressed: () => TtsService.speak(word.word),
                 icon: const Icon(
                   Icons.volume_up_rounded,
                   size: 20,

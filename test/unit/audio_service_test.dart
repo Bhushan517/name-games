@@ -177,16 +177,80 @@ void main() {
     expect(AudioService().testPlayedSfx, contains('extra_life.wav'));
   });
   
-  test('Timer tick plays 5 times', () async {
+  testWidgets('Timer tick plays exactly 5 times in the last 5 seconds', (WidgetTester tester) async {
     final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.timed);
     final controller = GameController(
       challenge: challenge,
       repository: challengeRepository,
     );
     
-    // Fast forward to last 5 seconds? Not trivial with Timers without fake_async.
-    // However, the test requirement just needs to assert the rules.
-    // The previous tests verify SFX tracks correctly.
     expect(controller.mode, ChallengeMode.timed);
+    final totalTime = challenge.difficultyConfig.timerSeconds;
+    
+    AudioService().testPlayedSfx.clear();
+    
+    // Fast forward to just before 5 seconds remaining (to 6 seconds)
+    for (int i = 0; i < totalTime - 6; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    
+    // So far, no ticks should have played
+    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').isEmpty, true);
+    
+    // Now play the last 6 seconds (from 6 down to 0)
+    for (int i = 0; i < 6; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    
+    final ticks = AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length;
+    expect(ticks, 5);
+    
+    // At zero, no additional ticks
+    await tester.pump(const Duration(seconds: 1));
+    expect(AudioService().testPlayedSfx.where((s) => s == 'timer_tick.wav').length, 5);
+    
+    controller.dispose();
+    await tester.pump(const Duration(seconds: 1)); // Cleanup
+  });
+
+  test('Missing letter undo plays exactly once on success', () async {
+    final challenge = allChallenges.firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+    final controller = GameController(
+      challenge: challenge,
+      repository: challengeRepository,
+    );
+    
+    AudioService().testPlayedSfx.clear();
+    
+    // Try undoing when nothing is filled
+    controller.undo();
+    expect(AudioService().testPlayedSfx, isEmpty);
+    
+    // Fill a letter manually
+    final missingIndex = controller.missingIndices.first;
+    final wrongLetter = controller.missingLetterChoices.firstWhere((c) => c != challenge.word[missingIndex]);
+    controller.fillMissingLetter(wrongLetter);
+    
+    // Undo successfully
+    AudioService().testPlayedSfx.clear();
+    controller.undo();
+    expect(AudioService().testPlayedSfx, contains('letter_undo.wav'));
+    expect(AudioService().testPlayedSfx.where((s) => s == 'letter_undo.wav').length, 1);
+  });
+
+  test('Button tap helper plays sound', () {
+    AudioService().testPlayedSfx.clear();
+    bool tapped = false;
+    final callback = AudioService.withSound(() {
+      tapped = true;
+    });
+    callback!();
+    expect(tapped, true);
+    expect(AudioService().testPlayedSfx, contains('button_tap.wav'));
+  });
+
+  test('Audio Service safely handles disposeAll', () async {
+    await AudioService().disposeAll();
+    expect(AudioService().currentBgmTrack, isNull);
   });
 }

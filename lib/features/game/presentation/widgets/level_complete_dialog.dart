@@ -91,11 +91,7 @@ class _LevelCompleteDialogState extends State<LevelCompleteDialog>
                   ),
                   const SizedBox(width: 6),
                   IconButton(
-                    onPressed: () => TtsService.speak(
-                      wordContent.pronunciation.isNotEmpty
-                          ? wordContent.pronunciation
-                          : wordContent.word,
-                    ),
+                    onPressed: () => TtsService.speak(wordContent.word),
                     icon: const Icon(
                       Icons.volume_up_rounded,
                       size: 20,
@@ -199,7 +195,7 @@ class _LevelCompleteDialogState extends State<LevelCompleteDialog>
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: widget.onContinue,
+              onPressed: AudioService.withSound(widget.onContinue),
               child: const Text(AppStrings.continueText),
             ),
           ),

@@ -234,10 +234,16 @@ flutter build appbundle --release
 - No backend, no database
 - No user login or accounts
 - No in-app purchases
-- No ads
 - No analytics tracking
 
-The game is fully offline and privacy-respecting.
+The game is mostly offline and privacy-respecting, with AdMob providing child-safe test ads. Note: Production Ad IDs are still pending.
+
+---
+
+## 🎵 Audio & Licensing
+
+Background music and sound effects can be toggled in the Settings menu.
+See [AUDIO_LICENSES.md](AUDIO_LICENSES.md) for full details on all audio assets.
 
 ---
 

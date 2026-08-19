@@ -11,5 +11,5 @@ class AppConstants {
   static const String keyUnlockedLevel = 'unlocked_level';
   static const String keyStarsPrefix = 'stars_';
   static const String keyLevelStarsPrefix = 'stars_';
-  static const int adFrequencyCampaignLevels = 5;
+  static const int adFrequencyCampaignLevels = 4;
 }

@@ -1,7 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/widgets.dart';
 import 'local_storage_service.dart';
-import '../../data/models/player_progress.dart';
+
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
@@ -133,6 +133,7 @@ class AudioService {
   }
 
   Future<void> unduckBgmFromTts() async {
+    if (!_isDucking) return;
     _isDucking = false;
     if (_isTestMode) return;
     if (_currentBgmTrack == 'gameplay_music.wav') {
@@ -153,12 +154,35 @@ class AudioService {
   }
 
   Future<void> disposeAll() async {
-    if (_isTestMode) return;
+    if (_isTestMode) {
+      _bgmPlayer = null;
+      _sfxPlayers = null;
+      _currentBgmTrack = null;
+      _isAppPaused = false;
+      _isDucking = false;
+      _isAdShowing = false;
+      return;
+    }
     await _bgmPlayer?.dispose();
+    _bgmPlayer = null;
     if (_sfxPlayers != null) {
       for (var player in _sfxPlayers!) {
         await player.dispose();
       }
+      _sfxPlayers = null;
     }
+    _currentBgmTrack = null;
+    _isAppPaused = false;
+    _isDucking = false;
+    _isAdShowing = false;
+  }
+
+  /// Helper to wrap UI callbacks with the standard button tap sound
+  static VoidCallback? withSound(VoidCallback? callback) {
+    if (callback == null) return null;
+    return () {
+      AudioService().playSfx('button_tap.wav');
+      callback();
+    };
   }
 }

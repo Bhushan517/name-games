@@ -66,6 +66,7 @@ class TtsService {
       await _tts!.speak(word);
     } catch (e) {
       _isPlaying = false;
+      AudioService().unduckBgmFromTts();
       if (kDebugMode) debugPrint('[TtsService] speak failed: $e');
     }
   }
@@ -78,6 +79,7 @@ class TtsService {
       _tts?.stop().ignore();
     } catch (_) {}
     _isPlaying = false;
+    AudioService().unduckBgmFromTts();
   }
 
   /// Release the TTS engine. Call from app lifecycle dispose.
