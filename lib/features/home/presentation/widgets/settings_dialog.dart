@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/services/audio_service.dart';
 import '../../../../core/services/local_storage_service.dart';
+import '../../../../core/services/url_launcher_service.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key, required this.storageService});
@@ -23,6 +25,33 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _soundEnabled = AudioService().isSoundEnabled;
   }
 
+  Future<void> _handlePrivacyPolicyTap() async {
+    AudioService().playSfx('button_tap.wav');
+    final uri = Uri.parse(AppConstants.privacyPolicyUrl);
+    try {
+      final success = await UrlLauncherService.launchUrlExternal(uri);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to open Privacy Policy. Please check your internet connection.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to open Privacy Policy. Please check your internet connection.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -40,8 +69,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SwitchListTile(
-            title: const Text('Background Music',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text(
+              'Background Music',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             value: _musicEnabled,
             activeThumbColor: AppColors.cyan,
             onChanged: (val) {
@@ -52,8 +83,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
             },
           ),
           SwitchListTile(
-            title: const Text('Sound Effects',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Text(
+              'Sound Effects',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             value: _soundEnabled,
             activeThumbColor: AppColors.cyan,
             onChanged: (val) {
@@ -62,6 +95,18 @@ class _SettingsDialogState extends State<SettingsDialog> {
               });
               AudioService().setSoundEnabled(val);
             },
+          ),
+          const Divider(color: Colors.white24, height: 16),
+          ListTile(
+            leading: const Icon(
+              Icons.privacy_tip_outlined,
+              color: AppColors.cyan,
+            ),
+            title: const Text(
+              'Privacy Policy',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            onTap: _handlePrivacyPolicyTap,
           ),
         ],
       ),

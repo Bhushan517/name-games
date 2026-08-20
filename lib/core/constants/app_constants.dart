@@ -12,4 +12,6 @@ class AppConstants {
   static const String keyStarsPrefix = 'stars_';
   static const String keyLevelStarsPrefix = 'stars_';
   static const int adFrequencyCampaignLevels = 4;
+  static const String privacyPolicyUrl =
+      'https://docs.google.com/document/d/1iXJQAHjf8Zg1aDeqWWpLlq-jkH6yX1GqxsgMFcvRTwA/view';
 }
