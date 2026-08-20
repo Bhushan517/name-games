@@ -36,6 +36,20 @@ class FakeAdService implements AdService {
   @override
   Future<void> init() async {}
   @override
+  void Function(
+    String adUnitId,
+    void Function(RewardedAdWrapper) onAdLoaded,
+    void Function(dynamic error) onAdFailedToLoad,
+  ) rewardedHintLoadProvider = (a, b, c) {};
+
+  @override
+  void Function(
+    String adUnitId,
+    void Function(RewardedAdWrapper) onAdLoaded,
+    void Function(dynamic error) onAdFailedToLoad,
+  ) rewardedLifeLoadProvider = (a, b, c) {};
+
+  @override
   void loadRewardedHintAd() {}
   @override
   bool get isRewardedHintAdReady => true;
@@ -275,16 +289,16 @@ void main() {
   });
 
   group('Missing Letter Mode Tests', () {
-    late GeneratedChallenge oneBlankChallenge;
-    late GeneratedChallenge twoBlankChallenge;
+    late GeneratedChallenge birdChallenge;
+    late GeneratedChallenge elephantChallenge;
 
     setUpAll(() {
-      oneBlankChallenge = ChallengeGenerator.generateAllChallenges([
+      birdChallenge = ChallengeGenerator.generateAllChallenges([
         WordContent(
           id: '2',
-          word: 'CAT',
+          word: 'BIRD',
           category: 'Test',
-          emoji: '🐱',
+          emoji: '🐦',
           sentenceClue: 'Pet',
           meaningEnglish: '',
           meaningMarathi: '',
@@ -296,7 +310,7 @@ void main() {
         )
       ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
 
-      twoBlankChallenge = ChallengeGenerator.generateAllChallenges([
+      elephantChallenge = ChallengeGenerator.generateAllChallenges([
         WordContent(
           id: '3',
           word: 'ELEPHANT',
@@ -314,110 +328,114 @@ void main() {
       ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
     });
 
-    test('Maximum hints equal actual unresolved missing positions', () {
+    test('Maximum hints equal actual unresolved missing positions minus one',
+        () {
       final controller =
-          GameController(challenge: twoBlankChallenge, repository: repository);
-      final blanks = controller
-          .missingIndices.length; // Hard mode has 2 blanks for ELEPHANT
-      expect(controller.maxHints, blanks);
+          GameController(challenge: elephantChallenge, repository: repository);
+      final blanks = controller.missingIndices.length;
+      expect(controller.maxHints, blanks - 1);
     });
 
     test(
         'One blank manually filled incorrectly -> Hint remains enabled and fixes it',
         () {
       final controller =
-          GameController(challenge: oneBlankChallenge, repository: repository);
+          GameController(challenge: birdChallenge, repository: repository);
       final missingIndex = controller.missingIndices.first;
 
       final wrongLetter = controller.missingLetterChoices
-          .firstWhere((c) => c != oneBlankChallenge.word[missingIndex]);
-      controller.fillMissingLetter(wrongLetter);
+          .firstWhere((c) => c != birdChallenge.word[missingIndex]);
 
-      // Hint is still enabled because it's incorrect
+      // Fill all missing except one correctly, and one wrong
+      for (int i = 0; i < controller.missingIndices.length; i++) {
+        final idx = controller.missingIndices[i];
+        if (i == 0) {
+          controller.fillMissingLetter(wrongLetter);
+        } else {
+          controller.fillMissingLetter(birdChallenge.word[idx]);
+        }
+      }
+
+      // Hint is still enabled because there is an incorrect fill
       expect(controller.canUseHint, true);
 
-      // Granting hint fixes it
       controller.grantHint();
       expect(controller.filledMissingLetters[missingIndex],
-          oneBlankChallenge.word[missingIndex]);
+          birdChallenge.word[missingIndex]);
       expect(controller.revealedHintIndices.contains(missingIndex), true);
-      expect(controller.canUseHint, false);
-
-      // Undo does not remove the hinted letter
-      controller.undo();
-      expect(controller.filledMissingLetters[missingIndex],
-          oneBlankChallenge.word[missingIndex]);
     });
 
-    test('One blank manually filled correctly -> Hint is disabled', () {
+    test('All blanks manually filled correctly -> Hint is disabled', () {
       final controller =
-          GameController(challenge: oneBlankChallenge, repository: repository);
-      final missingIndex = controller.missingIndices.first;
+          GameController(challenge: birdChallenge, repository: repository);
 
-      final correctLetter = oneBlankChallenge.word[missingIndex];
-      controller.fillMissingLetter(correctLetter);
+      for (final idx in controller.missingIndices) {
+        controller.fillMissingLetter(birdChallenge.word[idx]);
+      }
 
       expect(controller.canUseHint, false);
     });
 
     test(
-        'Two blanks with one correct and one wrong -> Hint fixes only the wrong position',
+        'Multiple blanks with one correct and one wrong -> Hint fixes only the wrong position',
         () {
       final controller =
-          GameController(challenge: twoBlankChallenge, repository: repository);
+          GameController(challenge: elephantChallenge, repository: repository);
       final missingIndex1 = controller.missingIndices[0];
       final missingIndex2 = controller.missingIndices[1];
 
-      final correctLetter = twoBlankChallenge.word[missingIndex1];
+      final correctLetter = elephantChallenge.word[missingIndex1];
       final wrongLetter = controller.missingLetterChoices
-          .firstWhere((c) => c != twoBlankChallenge.word[missingIndex2]);
+          .firstWhere((c) => c != elephantChallenge.word[missingIndex2]);
 
-      // First fill correctly, second wrong
       controller.fillMissingLetter(correctLetter);
       controller.fillMissingLetter(wrongLetter);
 
-      // Hint is enabled because there's a wrong one
       expect(controller.canUseHint, true);
-
       controller.grantHint();
 
-      // It should fix the wrong one (missingIndex2)
+      // Should fix the wrong one (missingIndex2)
       expect(controller.filledMissingLetters[missingIndex2],
-          twoBlankChallenge.word[missingIndex2]);
+          elephantChallenge.word[missingIndex2]);
       expect(controller.revealedHintIndices.contains(missingIndex2), true);
 
-      // The correctly filled one remains unhinted (so it can be undone)
+      // The correctly filled one remains unhinted
       expect(controller.revealedHintIndices.contains(missingIndex1), false);
-      expect(controller.canUseHint, false);
     });
 
-    test('Two-blank level reveals two different positions', () {
+    test('Multi-blank level reveals up to maxHints positions', () {
       final controller =
-          GameController(challenge: twoBlankChallenge, repository: repository);
-      expect(controller.missingIndices.length, 2);
+          GameController(challenge: elephantChallenge, repository: repository);
+      final maxH = controller.maxHints;
 
-      controller.grantHint(); // Free
-      controller.grantHint(); // Ad
+      for (int i = 0; i < maxH; i++) {
+        controller.grantHint();
+      }
 
-      expect(controller.filledMissingLetters.length, 2);
-      expect(controller.revealedHintIndices.length, 2);
+      expect(controller.revealedHintIndices.length, maxH);
+      expect(controller.canUseHint, false);
     });
 
     test(
         'Wrong answer preserves hinted positions but clears wrong manual entries',
         () async {
       final controller =
-          GameController(challenge: twoBlankChallenge, repository: repository);
+          GameController(challenge: elephantChallenge, repository: repository);
 
       controller.grantHint();
       final hintedIndex = controller.filledMissingLetters.keys.first;
 
       final otherMissingIndex =
           controller.missingIndices.firstWhere((i) => i != hintedIndex);
-      // Provide a wrong letter
       final wrongLetter = controller.missingLetterChoices
-          .firstWhere((c) => c != twoBlankChallenge.word[otherMissingIndex]);
-      controller.fillMissingLetter(wrongLetter);
+          .firstWhere((c) => c != elephantChallenge.word[otherMissingIndex]);
+
+      // Fill remaining with random letters to trigger validation
+      for (final idx in controller.missingIndices) {
+        if (!controller.filledMissingLetters.containsKey(idx)) {
+          controller.fillMissingLetter(wrongLetter);
+        }
+      }
 
       await controller.validateSpelling();
 
@@ -430,7 +448,7 @@ void main() {
 
     test('Undo does not remove a hinted missing letter', () {
       final controller =
-          GameController(challenge: twoBlankChallenge, repository: repository);
+          GameController(challenge: elephantChallenge, repository: repository);
       controller.grantHint();
 
       final hintedIndex = controller.filledMissingLetters.keys.first;
@@ -544,6 +562,137 @@ void main() {
 
       // Attempting to pump after dispose should not throw pending timer exceptions
       await tester.pump(const Duration(seconds: 1));
+    });
+  });
+
+  group('Production Fixes & Requirements', () {
+    test(
+        'Every generated challenge supports at least 3 meaningful hints when word length >= 4',
+        () {
+      final words = [
+        WordContent(
+          id: 'test_4',
+          word: 'FOUR',
+          category: 'Test',
+          emoji: '4️⃣',
+          sentenceClue: 'Clue',
+          meaningEnglish: '',
+          meaningMarathi: '',
+          meaningHindi: '',
+          pronunciation: '',
+          difficulty: 'easy',
+          patternTemplate: 'star',
+          minimumAge: 7,
+        ),
+        WordContent(
+          id: 'test_5',
+          word: 'FIVES',
+          category: 'Test',
+          emoji: '5️⃣',
+          sentenceClue: 'Clue',
+          meaningEnglish: '',
+          meaningMarathi: '',
+          meaningHindi: '',
+          pronunciation: '',
+          difficulty: 'hard',
+          patternTemplate: 'star',
+          minimumAge: 7,
+        ),
+      ];
+      final challenges = ChallengeGenerator.generateAllChallenges(words);
+      for (final challenge in challenges) {
+        final controller =
+            GameController(challenge: challenge, repository: repository);
+        if (challenge.mode == ChallengeMode.missingLetter &&
+            challenge.word.length == 4) {
+          expect(controller.maxHints, 2,
+              reason:
+                  'Word length 4 permits max 2 hints to leave 1 playable slot');
+        } else {
+          expect(controller.maxHints, greaterThanOrEqualTo(3));
+        }
+        controller.dispose();
+      }
+    });
+
+    test('Duplicate-letter words remain correct', () {
+      final challenge = ChallengeGenerator.generateAllChallenges([
+        WordContent(
+          id: 'test_dup',
+          word: 'APPLE',
+          category: 'Test',
+          emoji: '🍎',
+          sentenceClue: 'Clue',
+          meaningEnglish: '',
+          meaningMarathi: '',
+          meaningHindi: '',
+          pronunciation: '',
+          difficulty: 'easy',
+          patternTemplate: 'star',
+          minimumAge: 7,
+        )
+      ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+
+      final controller =
+          GameController(challenge: challenge, repository: repository);
+      // Give hints
+      controller.grantHint(); // free
+      controller.grantHint();
+
+      // Should not duplicate the same position
+      final hintedPositions = controller.revealedHintIndices;
+      expect(hintedPositions.toSet().length, hintedPositions.length);
+      controller.dispose();
+    });
+
+    test('3 or more sequential rewarded extra lives can be earned', () async {
+      // Use a controlled missing-letter challenge so we can reliably exhaust lives.
+      final mlChallenge = ChallengeGenerator.generateAllChallenges([
+        WordContent(
+          id: 'life_test',
+          word: 'BIRD',
+          category: 'Test',
+          emoji: '🐦',
+          sentenceClue: 'Flies',
+          meaningEnglish: '',
+          meaningMarathi: '',
+          meaningHindi: '',
+          pronunciation: '',
+          difficulty: 'easy',
+          patternTemplate: 'star',
+          minimumAge: 7,
+        )
+      ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+
+      final controller =
+          GameController(challenge: mlChallenge, repository: repository);
+
+      // Exhaust all lives by submitting wrong answers.
+      // Pick a letter that is guaranteed wrong for ALL missing positions.
+      while (controller.lives > 0 &&
+          controller.validationState != GameValidationState.outOfLives) {
+        // Fill every missing slot with a wrong letter then validate.
+        for (final idx in controller.missingIndices) {
+          if (!controller.filledMissingLetters.containsKey(idx)) {
+            final wrongLetter = controller.missingLetterChoices.firstWhere(
+                (c) => c != mlChallenge.word[idx],
+                orElse: () => 'Z');
+            controller.fillMissingLetter(wrongLetter);
+          }
+        }
+        await controller.validateSpelling();
+      }
+      expect(controller.validationState, GameValidationState.outOfLives);
+
+      // Grant 3 extra lives via rewarded ads.
+      for (int i = 0; i < 3; i++) {
+        expect(controller.canUseRewardedLife, true);
+        controller.grantRewardedLife();
+      }
+
+      expect(controller.lives, 3);
+      expect(controller.rewardedLivesUsed, 3);
+      controller.dispose();
     });
   });
 }

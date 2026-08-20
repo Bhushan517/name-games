@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'app/app.dart';
 import 'app/routes/app_router.dart';
@@ -14,8 +15,17 @@ import 'core/services/audio_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await MobileAds.instance.initialize();
-  await AdService().init();
+  // Initialize MobileAds and AdService safely without blocking the app startup
+  Future(() async {
+    try {
+      await MobileAds.instance.initialize();
+      await AdService().init();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Ad initialization failed: $e');
+      }
+    }
+  });
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

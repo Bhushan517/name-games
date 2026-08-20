@@ -41,6 +41,44 @@ class GoogleMobileAdsInterstitialWrapper implements InterstitialAdWrapper {
   }
 }
 
+abstract class RewardedAdWrapper {
+  Future<void> show(
+      {required void Function(RewardItem reward) onUserEarnedReward});
+  void dispose();
+  void setFullScreenContentCallback({
+    required void Function() onAdShowedFullScreenContent,
+    required void Function() onAdDismissedFullScreenContent,
+    required void Function(dynamic error) onAdFailedToShowFullScreenContent,
+  });
+}
+
+class GoogleMobileAdsRewardedWrapper implements RewardedAdWrapper {
+  final RewardedAd _ad;
+  GoogleMobileAdsRewardedWrapper(this._ad);
+
+  @override
+  Future<void> show(
+          {required void Function(RewardItem reward) onUserEarnedReward}) =>
+      _ad.show(onUserEarnedReward: (ad, reward) => onUserEarnedReward(reward));
+
+  @override
+  void dispose() => _ad.dispose();
+
+  @override
+  void setFullScreenContentCallback({
+    required void Function() onAdShowedFullScreenContent,
+    required void Function() onAdDismissedFullScreenContent,
+    required void Function(dynamic error) onAdFailedToShowFullScreenContent,
+  }) {
+    _ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) => onAdShowedFullScreenContent(),
+      onAdDismissedFullScreenContent: (ad) => onAdDismissedFullScreenContent(),
+      onAdFailedToShowFullScreenContent: (ad, error) =>
+          onAdFailedToShowFullScreenContent(error),
+    );
+  }
+}
+
 class AdService {
   static AdService? _mockInstance;
   static final AdService _instance = AdService._internal();
@@ -72,8 +110,40 @@ class AdService {
     );
   };
 
-  RewardedAd? _rewardedHintAd;
-  RewardedAd? _rewardedLifeAd;
+  @visibleForTesting
+  void Function(
+    String adUnitId,
+    void Function(RewardedAdWrapper) onAdLoaded,
+    void Function(dynamic error) onAdFailedToLoad,
+  ) rewardedHintLoadProvider = (adUnitId, onLoaded, onFailed) {
+    RewardedAd.load(
+      adUnitId: adUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) => onLoaded(GoogleMobileAdsRewardedWrapper(ad)),
+        onAdFailedToLoad: (error) => onFailed(error),
+      ),
+    );
+  };
+
+  @visibleForTesting
+  void Function(
+    String adUnitId,
+    void Function(RewardedAdWrapper) onAdLoaded,
+    void Function(dynamic error) onAdFailedToLoad,
+  ) rewardedLifeLoadProvider = (adUnitId, onLoaded, onFailed) {
+    RewardedAd.load(
+      adUnitId: adUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) => onLoaded(GoogleMobileAdsRewardedWrapper(ad)),
+        onAdFailedToLoad: (error) => onFailed(error),
+      ),
+    );
+  };
+
+  RewardedAdWrapper? _rewardedHintAd;
+  RewardedAdWrapper? _rewardedLifeAd;
   InterstitialAdWrapper? _interstitialAd;
 
   bool _isRewardedHintLoading = false;
@@ -143,22 +213,19 @@ class AdService {
     if (_rewardedHintAd != null || _isRewardedHintLoading) return;
     _isRewardedHintLoading = true;
 
-    RewardedAd.load(
-      adUnitId: _rewardedHintAdUnitId,
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          _rewardedHintAd = ad;
-          _isRewardedHintLoading = false;
-          _hintRetryAttempt = 0;
-        },
-        onAdFailedToLoad: (error) {
-          debugPrint('RewardedHintAd failed to load: $error');
-          _rewardedHintAd = null;
-          _isRewardedHintLoading = false;
-          _scheduleHintRetry();
-        },
-      ),
+    rewardedHintLoadProvider(
+      _rewardedHintAdUnitId,
+      (ad) {
+        _rewardedHintAd = ad;
+        _isRewardedHintLoading = false;
+        _hintRetryAttempt = 0;
+      },
+      (error) {
+        debugPrint('RewardedHintAd failed to load: $error');
+        _rewardedHintAd = null;
+        _isRewardedHintLoading = false;
+        _scheduleHintRetry();
+      },
     );
   }
 
@@ -189,37 +256,52 @@ class AdService {
 
     _isRewardedHintShowing = true;
     bool rewardGranted = false;
+    bool hasCompleted = false;
+    final adToDisplay = _rewardedHintAd!;
+
+    void safeContinue() {
+      if (hasCompleted) return;
+      hasCompleted = true;
+
+      adToDisplay.dispose();
+      if (_rewardedHintAd == adToDisplay) {
+        _rewardedHintAd = null;
+      }
+      _isRewardedHintShowing = false;
+      AudioService().onAdDismiss();
+      onAdClosed();
+      loadRewardedHintAd();
+    }
 
     AudioService().onAdShow();
-    _rewardedHintAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) => debugPrint('Hint ad showed.'),
-      onAdDismissedFullScreenContent: (ad) {
+    adToDisplay.setFullScreenContentCallback(
+      onAdShowedFullScreenContent: () => debugPrint('Hint ad showed.'),
+      onAdDismissedFullScreenContent: () {
         debugPrint('Hint ad dismissed.');
-        ad.dispose();
-        _rewardedHintAd = null;
-        _isRewardedHintShowing = false;
-        AudioService().onAdDismiss();
-        onAdClosed();
-        loadRewardedHintAd(); // Preload next
+        safeContinue();
       },
-      onAdFailedToShowFullScreenContent: (ad, error) {
+      onAdFailedToShowFullScreenContent: (error) {
         debugPrint('Hint ad failed to show: $error');
-        ad.dispose();
-        _rewardedHintAd = null;
-        _isRewardedHintShowing = false;
-        AudioService().onAdDismiss();
-        onAdClosed();
-        loadRewardedHintAd(); // Preload next
+        safeContinue();
       },
     );
 
-    _rewardedHintAd!.show(
-        onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-      if (!rewardGranted) {
-        rewardGranted = true;
-        onRewardEarned();
-      }
-    });
+    try {
+      adToDisplay.show(
+        onUserEarnedReward: (reward) {
+          if (!rewardGranted) {
+            rewardGranted = true;
+            onRewardEarned();
+          }
+        },
+      ).catchError((e) {
+        debugPrint('Hint ad threw exception on show Future: $e');
+        safeContinue();
+      });
+    } catch (e) {
+      debugPrint('Hint ad threw exception on show: $e');
+      safeContinue();
+    }
   }
 
   // --- Rewarded Extra Life Ad ---
@@ -227,22 +309,19 @@ class AdService {
     if (_rewardedLifeAd != null || _isRewardedLifeLoading) return;
     _isRewardedLifeLoading = true;
 
-    RewardedAd.load(
-      adUnitId: _rewardedLifeAdUnitId,
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          _rewardedLifeAd = ad;
-          _isRewardedLifeLoading = false;
-          _lifeRetryAttempt = 0;
-        },
-        onAdFailedToLoad: (error) {
-          debugPrint('RewardedLifeAd failed to load: $error');
-          _rewardedLifeAd = null;
-          _isRewardedLifeLoading = false;
-          _scheduleLifeRetry();
-        },
-      ),
+    rewardedLifeLoadProvider(
+      _rewardedLifeAdUnitId,
+      (ad) {
+        _rewardedLifeAd = ad;
+        _isRewardedLifeLoading = false;
+        _lifeRetryAttempt = 0;
+      },
+      (error) {
+        debugPrint('RewardedLifeAd failed to load: $error');
+        _rewardedLifeAd = null;
+        _isRewardedLifeLoading = false;
+        _scheduleLifeRetry();
+      },
     );
   }
 
@@ -273,37 +352,52 @@ class AdService {
 
     _isRewardedLifeShowing = true;
     bool rewardGranted = false;
+    bool hasCompleted = false;
+    final adToDisplay = _rewardedLifeAd!;
+
+    void safeContinue() {
+      if (hasCompleted) return;
+      hasCompleted = true;
+
+      adToDisplay.dispose();
+      if (_rewardedLifeAd == adToDisplay) {
+        _rewardedLifeAd = null;
+      }
+      _isRewardedLifeShowing = false;
+      AudioService().onAdDismiss();
+      onAdClosed();
+      loadRewardedLifeAd();
+    }
 
     AudioService().onAdShow();
-    _rewardedLifeAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) => debugPrint('Life ad showed.'),
-      onAdDismissedFullScreenContent: (ad) {
+    adToDisplay.setFullScreenContentCallback(
+      onAdShowedFullScreenContent: () => debugPrint('Life ad showed.'),
+      onAdDismissedFullScreenContent: () {
         debugPrint('Life ad dismissed.');
-        ad.dispose();
-        _rewardedLifeAd = null;
-        _isRewardedLifeShowing = false;
-        AudioService().onAdDismiss();
-        onAdClosed();
-        loadRewardedLifeAd(); // Preload next
+        safeContinue();
       },
-      onAdFailedToShowFullScreenContent: (ad, error) {
+      onAdFailedToShowFullScreenContent: (error) {
         debugPrint('Life ad failed to show: $error');
-        ad.dispose();
-        _rewardedLifeAd = null;
-        _isRewardedLifeShowing = false;
-        AudioService().onAdDismiss();
-        onAdClosed();
-        loadRewardedLifeAd(); // Preload next
+        safeContinue();
       },
     );
 
-    _rewardedLifeAd!.show(
-        onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-      if (!rewardGranted) {
-        rewardGranted = true;
-        onRewardEarned();
-      }
-    });
+    try {
+      adToDisplay.show(
+        onUserEarnedReward: (reward) {
+          if (!rewardGranted) {
+            rewardGranted = true;
+            onRewardEarned();
+          }
+        },
+      ).catchError((e) {
+        debugPrint('Life ad threw exception on show Future: $e');
+        safeContinue();
+      });
+    } catch (e) {
+      debugPrint('Life ad threw exception on show: $e');
+      safeContinue();
+    }
   }
 
   // --- Interstitial Ad ---

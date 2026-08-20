@@ -87,10 +87,13 @@ void main() {
         );
         expect(wrongChoice, findsWidgets);
 
-        // Tap wrong choice button to fill all missing slots
-        for (var slot = 0;
-            slot < challenge.difficultyConfig.missingLetterCount;
-            slot++) {
+        // Tap wrong choice button to fill ALL missing slots.
+        // The actual hidden letter count is max(missingLetterCount,
+        // min(4, word.length - 1)), which can exceed missingLetterCount
+        // (e.g., easy 4-letter words hide 3 letters even though
+        // missingLetterCount is 1). Each tap fills exactly one slot,
+        // so we tap word.length times to cover the maximum possible.
+        for (var slot = 0; slot < challenge.word.length; slot++) {
           await tester.tap(wrongChoice.first, warnIfMissed: false);
           await tester.pump(const Duration(milliseconds: 20));
         }

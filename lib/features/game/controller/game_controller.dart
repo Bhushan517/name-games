@@ -98,6 +98,7 @@ class GameController extends ChangeNotifier {
   bool get canUseHint {
     if (_isCompleted) return false;
     if (mode == ChallengeMode.missingLetter) {
+      if (_hintedMissingIndices.length >= maxHints) return false;
       return _missingIndices.any((index) =>
           !_hintedMissingIndices.contains(index) &&
           _filledMissingLetters[index] != word[index]);
@@ -108,7 +109,7 @@ class GameController extends ChangeNotifier {
   int get totalHintsUsed => revealedHintIndices.length;
   int get maxHints {
     if (mode == ChallengeMode.missingLetter) {
-      return _missingIndices.length;
+      return max(1, _missingIndices.length - 1);
     }
     return letterCount - 1;
   }
@@ -193,9 +194,9 @@ class GameController extends ChangeNotifier {
     _missingLetterChoices.clear();
     _hintedMissingIndices.clear();
 
-    final countToHide = min(
+    final countToHide = max(
       challenge.difficultyConfig.missingLetterCount,
-      word.length - 1,
+      min(4, word.length - 1),
     );
 
     final availablePositions = List.generate(word.length, (i) => i)
@@ -407,7 +408,7 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get canUseRewardedLife => _rewardedLivesUsed < 2;
+  bool get canUseRewardedLife => true;
 
   void grantRewardedLife() {
     if (canUseRewardedLife) {
