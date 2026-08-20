@@ -171,14 +171,34 @@ class AdService {
 
   @visibleForTesting
   void resetStateForTest() {
-    _campaignCompletionsThisSession = 0;
-    _lastInterstitialTime = null;
-    _isInterstitialLoading = false;
-    _isInterstitialShowing = false;
-    _interstitialRetryAttempt = 0;
-    _interstitialAd = null;
+    _hintRetryTimer?.cancel();
+    _hintRetryTimer = null;
+    _lifeRetryTimer?.cancel();
+    _lifeRetryTimer = null;
     _interstitialRetryTimer?.cancel();
     _interstitialRetryTimer = null;
+
+    _rewardedHintAd?.dispose();
+    _rewardedHintAd = null;
+    _rewardedLifeAd?.dispose();
+    _rewardedLifeAd = null;
+    _interstitialAd?.dispose();
+    _interstitialAd = null;
+
+    _isRewardedHintLoading = false;
+    _isRewardedLifeLoading = false;
+    _isInterstitialLoading = false;
+
+    _isRewardedHintShowing = false;
+    _isRewardedLifeShowing = false;
+    _isInterstitialShowing = false;
+
+    _hintRetryAttempt = 0;
+    _lifeRetryAttempt = 0;
+    _interstitialRetryAttempt = 0;
+
+    _campaignCompletionsThisSession = 0;
+    _lastInterstitialTime = null;
     clock = () => DateTime.now();
   }
 
@@ -289,7 +309,7 @@ class AdService {
     try {
       adToDisplay.show(
         onUserEarnedReward: (reward) {
-          if (!rewardGranted) {
+          if (!hasCompleted && !rewardGranted) {
             rewardGranted = true;
             onRewardEarned();
           }
@@ -385,7 +405,7 @@ class AdService {
     try {
       adToDisplay.show(
         onUserEarnedReward: (reward) {
-          if (!rewardGranted) {
+          if (!hasCompleted && !rewardGranted) {
             rewardGranted = true;
             onRewardEarned();
           }
@@ -509,10 +529,25 @@ class AdService {
 
   void dispose() {
     _hintRetryTimer?.cancel();
+    _hintRetryTimer = null;
     _lifeRetryTimer?.cancel();
+    _lifeRetryTimer = null;
     _interstitialRetryTimer?.cancel();
+    _interstitialRetryTimer = null;
+
     _rewardedHintAd?.dispose();
+    _rewardedHintAd = null;
     _rewardedLifeAd?.dispose();
+    _rewardedLifeAd = null;
     _interstitialAd?.dispose();
+    _interstitialAd = null;
+
+    _isRewardedHintLoading = false;
+    _isRewardedLifeLoading = false;
+    _isInterstitialLoading = false;
+
+    _isRewardedHintShowing = false;
+    _isRewardedLifeShowing = false;
+    _isInterstitialShowing = false;
   }
 }

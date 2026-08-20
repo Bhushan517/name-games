@@ -1,35 +1,63 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/foundation.dart';
+import 'package:name_twist_game/core/services/ad_startup_service.dart';
 
 void main() {
-  test('App startup does not block on AdMob initialization failure', () async {
-    // This test verifies that the main() function can be called,
-    // and even if AdService or MobileAds throw (which they will in a unit test environment
-    // unless explicitly mocked), it does not crash the app startup and allows runApp to be called.
+  group('Production initializeAdsSafely Tests', () {
+    test(
+        'MobileAds initialization throws -> completes safely without calling initializeAdService',
+        () async {
+      int mobileAdsCalls = 0;
+      int adServiceCalls = 0;
 
-    // We expect main() to complete without throwing an unhandled exception.
-    // In a real widget test, we'd need to mock the platform channels.
-    // For this, we just verify that the Future(() async {...}) catches the exception.
+      await initializeAdsSafely(
+        initializeMobileAds: () async {
+          mobileAdsCalls++;
+          throw Exception('Simulated MobileAds Failure');
+        },
+        initializeAdService: () async {
+          adServiceCalls++;
+        },
+      );
 
-    // Since main() calls runApp, we can run it in testWidgets.
-    // However, runApp will attempt to render the actual app which requires
-    // many real dependencies.
-    // A simpler assertion is just checking that AdService.init() inside a Future
-    // catches errors safely.
-
-    bool caughtError = false;
-
-    await Future(() async {
-      try {
-        // Force an error
-        throw Exception('Simulated AdMob Failure');
-      } catch (e) {
-        if (kDebugMode) {
-          caughtError = true;
-        }
-      }
+      expect(mobileAdsCalls, 1);
+      expect(adServiceCalls, 0,
+          reason: 'initializeAdService must not be called if MobileAds throws');
     });
 
-    expect(caughtError, isTrue);
+    test('AdService initialization throws -> completes safely without throwing',
+        () async {
+      int mobileAdsCalls = 0;
+      int adServiceCalls = 0;
+
+      await initializeAdsSafely(
+        initializeMobileAds: () async {
+          mobileAdsCalls++;
+        },
+        initializeAdService: () async {
+          adServiceCalls++;
+          throw Exception('Simulated AdService Failure');
+        },
+      );
+
+      expect(mobileAdsCalls, 1);
+      expect(adServiceCalls, 1);
+    });
+
+    test(
+        'Successful initialization calls MobileAds and AdService once each in order',
+        () async {
+      final order = <String>[];
+
+      await initializeAdsSafely(
+        initializeMobileAds: () async {
+          order.add('MobileAds');
+        },
+        initializeAdService: () async {
+          order.add('AdService');
+        },
+      );
+
+      expect(order, ['MobileAds', 'AdService']);
+    });
   });
 }

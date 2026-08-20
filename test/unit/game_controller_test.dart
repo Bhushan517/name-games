@@ -603,14 +603,9 @@ void main() {
       for (final challenge in challenges) {
         final controller =
             GameController(challenge: challenge, repository: repository);
-        if (challenge.mode == ChallengeMode.missingLetter &&
-            challenge.word.length == 4) {
-          expect(controller.maxHints, 2,
-              reason:
-                  'Word length 4 permits max 2 hints to leave 1 playable slot');
-        } else {
-          expect(controller.maxHints, greaterThanOrEqualTo(3));
-        }
+        expect(controller.maxHints, greaterThanOrEqualTo(3),
+            reason:
+                'Every challenge (word length >= 4) must support at least 3 hints');
         controller.dispose();
       }
     });
@@ -635,18 +630,15 @@ void main() {
 
       final controller =
           GameController(challenge: challenge, repository: repository);
-      // Give hints
       controller.grantHint(); // free
       controller.grantHint();
 
-      // Should not duplicate the same position
       final hintedPositions = controller.revealedHintIndices;
       expect(hintedPositions.toSet().length, hintedPositions.length);
       controller.dispose();
     });
 
-    test('3 or more sequential rewarded extra lives can be earned', () async {
-      // Use a controlled missing-letter challenge so we can reliably exhaust lives.
+    test('3 sequential rewarded extra life cycles (non-stacking)', () async {
       final mlChallenge = ChallengeGenerator.generateAllChallenges([
         WordContent(
           id: 'life_test',
@@ -667,32 +659,74 @@ void main() {
       final controller =
           GameController(challenge: mlChallenge, repository: repository);
 
-      // Exhaust all lives by submitting wrong answers.
-      // Pick a letter that is guaranteed wrong for ALL missing positions.
-      while (controller.lives > 0 &&
-          controller.validationState != GameValidationState.outOfLives) {
-        // Fill every missing slot with a wrong letter then validate.
-        for (final idx in controller.missingIndices) {
-          if (!controller.filledMissingLetters.containsKey(idx)) {
-            final wrongLetter = controller.missingLetterChoices.firstWhere(
-                (c) => c != mlChallenge.word[idx],
-                orElse: () => 'Z');
-            controller.fillMissingLetter(wrongLetter);
+      // Verify initially canUseRewardedLife is false
+      expect(controller.canUseRewardedLife, isFalse);
+
+      for (int cycle = 0; cycle < 3; cycle++) {
+        // 1. Exhaust all lives by submitting wrong answers to reach outOfLives
+        while (controller.lives > 0 &&
+            controller.validationState != GameValidationState.outOfLives) {
+          for (final idx in controller.missingIndices) {
+            if (!controller.filledMissingLetters.containsKey(idx)) {
+              final wrongLetter = controller.missingLetterChoices.firstWhere(
+                  (c) => c != mlChallenge.word[idx],
+                  orElse: () => 'Z');
+              controller.fillMissingLetter(wrongLetter);
+            }
           }
+          await controller.validateSpelling();
         }
-        await controller.validateSpelling();
-      }
-      expect(controller.validationState, GameValidationState.outOfLives);
+        expect(controller.validationState, GameValidationState.outOfLives);
+        expect(controller.canUseRewardedLife, isTrue);
 
-      // Grant 3 extra lives via rewarded ads.
-      for (int i = 0; i < 3; i++) {
-        expect(controller.canUseRewardedLife, true);
+        // 2. Grant exactly ONE rewarded life
         controller.grantRewardedLife();
+
+        // 3. Verify exactly +1 life granted and state returned to initial
+        expect(controller.lives, 1);
+        expect(controller.validationState, GameValidationState.initial);
+        expect(controller.canUseRewardedLife, isFalse); // Stacking not allowed!
       }
 
-      expect(controller.lives, 3);
+      // After 3 full cycles
       expect(controller.rewardedLivesUsed, 3);
       controller.dispose();
+    });
+
+    test('Disposed controller safety and eligibility guards', () {
+      final mlChallenge = ChallengeGenerator.generateAllChallenges([
+        WordContent(
+          id: 'disp_test',
+          word: 'BIRD',
+          category: 'Test',
+          emoji: '🐦',
+          sentenceClue: 'Flies',
+          meaningEnglish: '',
+          meaningMarathi: '',
+          meaningHindi: '',
+          pronunciation: '',
+          difficulty: 'easy',
+          patternTemplate: 'star',
+          minimumAge: 7,
+        )
+      ]).firstWhere((c) => c.mode == ChallengeMode.missingLetter);
+
+      final controller =
+          GameController(challenge: mlChallenge, repository: repository);
+
+      bool notifiedAfterDispose = false;
+      controller.addListener(() {
+        notifiedAfterDispose = true;
+      });
+
+      controller.dispose();
+
+      // Granting life or hints after disposal must be ignored and not notify listeners
+      controller.grantRewardedLife();
+      controller.grantHint();
+      expect(notifiedAfterDispose, isFalse);
+      expect(controller.canUseRewardedLife, isFalse);
+      expect(controller.canUseHint, isFalse);
     });
   });
 }

@@ -95,21 +95,23 @@ class GameController extends ChangeNotifier {
   int get lives => _lives;
   bool get isNextHintFree => revealedHintIndices.isEmpty;
 
+  bool _isDisposed = false;
+
   bool get canUseHint {
-    if (_isCompleted) return false;
+    if (_isDisposed || _isCompleted) return false;
     if (mode == ChallengeMode.missingLetter) {
       if (_hintedMissingIndices.length >= maxHints) return false;
       return _missingIndices.any((index) =>
           !_hintedMissingIndices.contains(index) &&
           _filledMissingLetters[index] != word[index]);
     }
-    return _fixedHintNodeIdByPosition.length < (letterCount - 1);
+    return _fixedHintNodeIdByPosition.length < maxHints;
   }
 
   int get totalHintsUsed => revealedHintIndices.length;
   int get maxHints {
     if (mode == ChallengeMode.missingLetter) {
-      return max(1, _missingIndices.length - 1);
+      return max(0, _missingIndices.length - 1);
     }
     return letterCount - 1;
   }
@@ -196,7 +198,7 @@ class GameController extends ChangeNotifier {
 
     final countToHide = max(
       challenge.difficultyConfig.missingLetterCount,
-      min(4, word.length - 1),
+      min(4, word.length),
     );
 
     final availablePositions = List.generate(word.length, (i) => i)
@@ -408,18 +410,21 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get canUseRewardedLife => true;
+  bool get canUseRewardedLife {
+    return !_isDisposed &&
+        !_isCompleted &&
+        _validationState == GameValidationState.outOfLives;
+  }
 
   void grantRewardedLife() {
+    if (_isDisposed || _isCompleted) return;
     if (canUseRewardedLife) {
       AudioService().playSfx('extra_life.wav');
       _rewardedLivesUsed++;
       _lives++;
 
-      // Clear out of lives state
-      if (_validationState == GameValidationState.outOfLives) {
-        _validationState = GameValidationState.initial;
-      }
+      // Clear out of lives state and return state to initial (prevents immediate stacking)
+      _validationState = GameValidationState.initial;
 
       // For Timed mode, ensure timer restarts if it was cancelled
       if (mode == ChallengeMode.timed) {
@@ -518,9 +523,19 @@ class GameController extends ChangeNotifier {
   }
 
   @override
+  void notifyListeners() {
+    if (_isDisposed) return;
+    super.notifyListeners();
+  }
+
+  @override
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
     _memoryTimer?.cancel();
+    _memoryTimer = null;
     _timedChallengeTimer?.cancel();
+    _timedChallengeTimer = null;
     TtsService.stop();
     super.dispose();
   }

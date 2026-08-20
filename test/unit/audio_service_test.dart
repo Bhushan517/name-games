@@ -170,13 +170,27 @@ void main() {
     expect(AudioService().testPlayedSfx, isEmpty);
   });
 
-  test('Extra Life sound plays exactly once after reward', () {
+  test('Extra Life sound plays exactly once after reward', () async {
     final challenge =
-        allChallenges.firstWhere((c) => c.mode == ChallengeMode.unscramble);
+        allChallenges.firstWhere((c) => c.mode == ChallengeMode.missingLetter);
     final controller = GameController(
       challenge: challenge,
       repository: challengeRepository,
     );
+
+    // Exhaust lives to reach outOfLives state
+    while (controller.lives > 0 &&
+        controller.validationState != GameValidationState.outOfLives) {
+      for (final idx in controller.missingIndices) {
+        if (!controller.filledMissingLetters.containsKey(idx)) {
+          final wrongLetter = controller.missingLetterChoices
+              .firstWhere((c) => c != challenge.word[idx], orElse: () => 'Z');
+          controller.fillMissingLetter(wrongLetter);
+        }
+      }
+      await controller.validateSpelling();
+    }
+    expect(controller.validationState, GameValidationState.outOfLives);
 
     AudioService().testPlayedSfx.clear();
     controller.grantRewardedLife();

@@ -10,6 +10,8 @@ class FakeRewardedAdWrapper implements RewardedAdWrapper {
   bool isDisposed = false;
   bool simulateFailure = false;
   bool simulateException = false;
+  bool autoRewardOnShow = true;
+  void Function(RewardItem reward)? _onRewardEarnedCallback;
   void Function()? _onAdShowed;
   void Function()? _onAdDismissed;
   void Function(dynamic error)? _onAdFailed;
@@ -31,13 +33,19 @@ class FakeRewardedAdWrapper implements RewardedAdWrapper {
     if (simulateException) {
       throw Exception('Simulated exception during show()');
     }
+    _onRewardEarnedCallback = onUserEarnedReward;
     if (simulateFailure) {
       _onAdFailed?.call('Simulated failure');
     } else {
       _onAdShowed?.call();
-      // Simulate user earning reward
-      onUserEarnedReward(RewardItem(1, 'reward'));
+      if (autoRewardOnShow) {
+        triggerReward();
+      }
     }
+  }
+
+  void triggerReward() {
+    _onRewardEarnedCallback?.call(RewardItem(1, 'reward'));
   }
 
   void simulateDismiss() {
@@ -142,7 +150,7 @@ void main() {
       oldAd.simulateDismiss();
 
       expect(closedCalls, 1);
-      expect(rewardEarnedCalls, 1); // Reward earned before fail/dismiss in fake
+      expect(rewardEarnedCalls, 1);
       expect(oldAd.isDisposed, isTrue);
 
       expect(currentFakeLifeAd, isNot(equals(oldAd)));
@@ -150,9 +158,6 @@ void main() {
     });
 
     test('Exception on show() triggers safeContinue exactly once', () {
-      // The FakeRewardedAdWrapper.show() is async, so throwing inside it produces
-      // a rejected Future (not a synchronous exception). The .catchError() handler
-      // runs as a microtask. Use fakeAsync + flushMicrotasks to drive it.
       fakeAsync((async) {
         final oldAd = currentFakeHintAd!;
         oldAd.simulateException = true;
@@ -165,15 +170,12 @@ void main() {
           onAdClosed: () => closedCalls++,
         );
 
-        // Drive the rejected-Future microtask to completion
         async.flushMicrotasks();
 
         expect(closedCalls, 1);
         expect(rewardEarnedCalls, 0); // Reward not earned due to exception
-        // currentFakeHintAd is now the newly preloaded ad (not the old one)
         expect(currentFakeHintAd, isNot(equals(oldAd)));
-        expect(currentFakeHintAd!.isDisposed,
-            isFalse); // New ad must not be disposed
+        expect(currentFakeHintAd!.isDisposed, isFalse);
       });
     });
 
@@ -190,6 +192,125 @@ void main() {
 
       expect(closedCalls, 1);
       expect(rewardEarnedCalls, 0);
+    });
+
+    test('Dismiss then late reward callback yields zero reward', () {
+      final oldAd = currentFakeHintAd!;
+      oldAd.autoRewardOnShow = false; // Do not auto-reward on show
+
+      int rewardEarnedCalls = 0;
+      int closedCalls = 0;
+
+      adService.showRewardedHintAd(
+        onRewardEarned: () => rewardEarnedCalls++,
+        onAdClosed: () => closedCalls++,
+      );
+
+      // Ad dismissed before user earns reward
+      oldAd.simulateDismiss();
+      expect(closedCalls, 1);
+      expect(rewardEarnedCalls, 0);
+
+      // Late reward callback arrives after dismiss
+      oldAd.triggerReward();
+      expect(rewardEarnedCalls, 0,
+          reason: 'Late reward callback after dismiss must be ignored');
+    });
+
+    test('Failure then late reward callback yields zero reward', () {
+      final oldAd = currentFakeLifeAd!;
+      oldAd.simulateFailure = true;
+      oldAd.autoRewardOnShow = false;
+
+      int rewardEarnedCalls = 0;
+      int closedCalls = 0;
+
+      adService.showRewardedLifeAd(
+        onRewardEarned: () => rewardEarnedCalls++,
+        onAdClosed: () => closedCalls++,
+      );
+
+      expect(closedCalls, 1);
+      expect(rewardEarnedCalls, 0);
+
+      // Late reward callback arrives after failure
+      oldAd.triggerReward();
+      expect(rewardEarnedCalls, 0,
+          reason: 'Late reward callback after failure must be ignored');
+    });
+
+    test('Show exception then late reward callback yields zero reward', () {
+      fakeAsync((async) {
+        final oldAd = currentFakeHintAd!;
+        oldAd.simulateException = true;
+        oldAd.autoRewardOnShow = false;
+
+        int rewardEarnedCalls = 0;
+        int closedCalls = 0;
+
+        adService.showRewardedHintAd(
+          onRewardEarned: () => rewardEarnedCalls++,
+          onAdClosed: () => closedCalls++,
+        );
+
+        async.flushMicrotasks();
+
+        expect(closedCalls, 1);
+        expect(rewardEarnedCalls, 0);
+
+        // Late reward callback arrives after show exception
+        oldAd.triggerReward();
+        expect(rewardEarnedCalls, 0,
+            reason: 'Late reward callback after exception must be ignored');
+      });
+    });
+
+    test('Duplicate reward callback before dismiss yields exactly one reward',
+        () {
+      final oldAd = currentFakeHintAd!;
+      oldAd.autoRewardOnShow = false;
+
+      int rewardEarnedCalls = 0;
+      int closedCalls = 0;
+
+      adService.showRewardedHintAd(
+        onRewardEarned: () => rewardEarnedCalls++,
+        onAdClosed: () => closedCalls++,
+      );
+
+      // Duplicate reward callbacks
+      oldAd.triggerReward();
+      oldAd.triggerReward();
+      oldAd.triggerReward();
+
+      expect(rewardEarnedCalls, 1,
+          reason:
+              'Duplicate reward callbacks before dismiss must grant exactly one reward');
+
+      oldAd.simulateDismiss();
+      expect(closedCalls, 1);
+    });
+
+    test(
+        'Multiple setUp/tearDown cycles prove resetStateForTest leaves no state leaks',
+        () {
+      // Run reset and verify clean slate
+      adService.resetStateForTest();
+
+      expect(adService.isRewardedHintAdReady, isFalse);
+      expect(adService.isRewardedLifeAdReady, isFalse);
+
+      // Re-load and verify independent operation
+      adService.loadRewardedHintAd();
+      expect(adService.isRewardedHintAdReady, isTrue);
+
+      adService.dispose();
+      expect(adService.isRewardedHintAdReady, isFalse);
+
+      // Idempotent dispose check
+      adService.dispose();
+      adService.dispose();
+      expect(adService.isRewardedHintAdReady, isFalse);
     });
   });
 }
