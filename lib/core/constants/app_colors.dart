@@ -19,4 +19,28 @@ class AppColors {
   static const Color textSecondary = Color(0xB3FFFFFF);
   static const Color textMuted = Color(0x61FFFFFF);
   static const Color borderSubtle = Colors.white12;
+
+  // Glass & Gradient Helpers
+  static const Color glassFill = Color(0x1AFFFFFF);
+  static const Color glassBorder = Color(0x33FFFFFF);
+  static const Color glassCardBg = Color(0x1F16223D);
+  static const Color neonGlowCyan = Color(0x4025F1DF);
+  static const Color neonGlowGold = Color(0x40FFD45C);
+
+  static const LinearGradient cardGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF1B2646),
+      Color(0xFF121A31),
+    ],
+  );
+
+  static const LinearGradient accentGradient = LinearGradient(
+    colors: [
+      Color(0xFF25F1DF),
+      Color(0xFF9A60FF),
+    ],
+  );
 }
+

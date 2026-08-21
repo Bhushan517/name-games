@@ -21,125 +21,127 @@ class ChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = isLocked ? Colors.white12 : challenge.themeColor;
+    final themeColor = challenge.themeColor;
 
     return InkWell(
       onTap: isLocked ? null : onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      borderRadius: BorderRadius.circular(22),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: cardColor, width: isLocked ? 1.0 : 1.5),
+          gradient: isLocked
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.03),
+                    Colors.white.withValues(alpha: 0.01),
+                  ],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF1B2646),
+                    themeColor.withValues(alpha: 0.15),
+                  ],
+                ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isLocked
+                ? Colors.white10
+                : (isCompleted ? AppColors.gold : themeColor),
+            width: isLocked ? 1.0 : (isCompleted ? 1.8 : 1.4),
+          ),
           boxShadow: isLocked
               ? null
               : [
                   BoxShadow(
-                    color: challenge.themeColor.withValues(alpha: 0.18),
+                    color: themeColor.withValues(alpha: 0.22),
                     blurRadius: 18,
-                    spreadRadius: 1,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 4),
                   ),
                 ],
         ),
         child: Row(
           children: [
-            // Neutral mystery icon / lock icon (NO answer emoji!)
+            // Level badge / lock icon
             Container(
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isLocked
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : challenge.themeColor.withValues(alpha: 0.12),
+                gradient: isLocked
+                    ? null
+                    : LinearGradient(
+                        colors: [
+                          themeColor.withValues(alpha: 0.25),
+                          themeColor.withValues(alpha: 0.1),
+                        ],
+                      ),
+                color: isLocked ? Colors.white.withValues(alpha: 0.04) : null,
                 border: Border.all(
-                  color: isLocked ? Colors.white24 : challenge.themeColor,
-                  width: 1.5,
+                  color: isLocked ? Colors.white24 : themeColor,
+                  width: 1.8,
                 ),
               ),
               child: Icon(
                 isLocked
                     ? Icons.lock_rounded
                     : (isCompleted
-                        ? Icons.auto_awesome_rounded
-                        : Icons.extension_rounded),
-                color: isLocked ? Colors.white38 : challenge.themeColor,
-                size: 24,
+                        ? Icons.workspace_premium_rounded
+                        : Icons.play_arrow_rounded),
+                color: isLocked ? Colors.white38 : (isCompleted ? AppColors.gold : themeColor),
+                size: 26,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
 
-            // Challenge Metadata (NO answer word / shape name!)
+            // Level info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 6,
-                    runSpacing: 2,
+                  Row(
                     children: [
                       Text(
                         'LEVEL ${challenge.challengeNumber}',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.1,
-                          color:
-                              isLocked ? Colors.white38 : challenge.themeColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: isLocked ? Colors.white38 : themeColor,
                         ),
                       ),
-                      // Mode tag
+                      const SizedBox(width: 8),
+                      // Mode pill
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1.5,
+                          horizontal: 7,
+                          vertical: 2,
                         ),
                         decoration: BoxDecoration(
                           color: isLocked
                               ? Colors.white.withValues(alpha: 0.05)
-                              : challenge.themeColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(5),
+                              : themeColor.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           challenge.mode.shortName,
                           style: TextStyle(
-                            fontSize: 8,
+                            fontSize: 9,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: isLocked
-                                ? Colors.white38
-                                : challenge.themeColor,
-                          ),
-                        ),
-                      ),
-                      // Difficulty badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isLocked
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Text(
-                          challenge.difficulty.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            color: isLocked ? Colors.white38 : Colors.white70,
+                            letterSpacing: 0.6,
+                            color: isLocked ? Colors.white38 : themeColor,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     isLocked
                         ? AppStrings.locked
@@ -149,52 +151,68 @@ class ChallengeCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 0.7,
+                      letterSpacing: 0.6,
                       color: isLocked ? Colors.white38 : Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${challenge.category} • ${challenge.letterCount} LETTERS',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color:
-                          isLocked ? Colors.white24 : AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Row(
-                    children: List.generate(
-                      3,
-                      (starIndex) => Icon(
-                        starIndex < starsEarned
-                            ? Icons.star_rounded
-                            : Icons.star_border_rounded,
-                        size: 15,
-                        color: starIndex < starsEarned
-                            ? AppColors.gold
-                            : Colors.white24,
+                    children: [
+                      Text(
+                        '${challenge.category} • ${challenge.letterCount} LETTERS',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isLocked ? Colors.white24 : AppColors.textSecondary,
+                        ),
                       ),
-                    ),
+                      const Spacer(),
+                      // Stars
+                      Row(
+                        children: List.generate(
+                          3,
+                          (starIndex) => Padding(
+                            padding: const EdgeInsets.only(left: 2),
+                            child: Icon(
+                              starIndex < starsEarned
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              size: 16,
+                              color: starIndex < starsEarned
+                                  ? AppColors.gold
+                                  : Colors.white24,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
 
-            // Play / Locked Action Icon
-            Icon(
-              isLocked
-                  ? Icons.lock_outline_rounded
-                  : Icons.play_circle_fill_rounded,
-              color: isLocked ? Colors.white24 : challenge.themeColor,
-              size: 28,
+            // Play Icon
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isLocked
+                    ? Colors.transparent
+                    : themeColor.withValues(alpha: 0.15),
+              ),
+              child: Icon(
+                isLocked
+                    ? Icons.lock_outline_rounded
+                    : Icons.chevron_right_rounded,
+                color: isLocked ? Colors.white24 : themeColor,
+                size: 24,
+              ),
             ),
           ],
         ),

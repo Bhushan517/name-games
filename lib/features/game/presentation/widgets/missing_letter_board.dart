@@ -27,29 +27,53 @@ class MissingLetterBoard extends StatelessWidget {
         // Display word with blanks
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 6,
-          runSpacing: 8,
+          spacing: 8,
+          runSpacing: 10,
           children: List.generate(word.length, (index) {
             final isMissing = missingIndices.contains(index);
             final filled = filledLetters[index];
 
-            return Container(
-              width: 42,
-              height: 50,
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 44,
+              height: 52,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isMissing
+                gradient: isMissing
                     ? (filled != null
-                        ? themeColor.withValues(alpha: 0.25)
-                        : Colors.white.withValues(alpha: 0.05))
-                    : const Color(0xFF17223B),
-                borderRadius: BorderRadius.circular(10),
+                        ? LinearGradient(
+                            colors: [
+                              themeColor.withValues(alpha: 0.35),
+                              themeColor.withValues(alpha: 0.15),
+                            ],
+                          )
+                        : LinearGradient(
+                            colors: [
+                              AppColors.gold.withValues(alpha: 0.15),
+                              AppColors.gold.withValues(alpha: 0.05),
+                            ],
+                          ))
+                    : const LinearGradient(
+                        colors: [
+                          Color(0xFF1B2646),
+                          Color(0xFF121A31),
+                        ],
+                      ),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isMissing
                       ? (filled != null ? themeColor : AppColors.gold)
                       : Colors.white24,
-                  width: isMissing ? 2.0 : 1.0,
+                  width: isMissing ? 2.0 : 1.2,
                 ),
+                boxShadow: isMissing && filled != null
+                    ? [
+                        BoxShadow(
+                          color: themeColor.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                        ),
+                      ]
+                    : null,
               ),
               child: Text(
                 isMissing ? (filled ?? '?') : word[index],
@@ -67,46 +91,58 @@ class MissingLetterBoard extends StatelessWidget {
 
         const SizedBox(height: 36),
 
-        const Text(
-          'CHOOSE THE MISSING LETTER',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-            color: Colors.white60,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text(
+            'CHOOSE THE MISSING LETTER',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              color: Colors.white70,
+            ),
           ),
         ),
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
         // Letter Choices
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 14,
+          runSpacing: 14,
           children: choices.map((letter) {
             return InkWell(
               onTap: () => onLetterSelected(letter),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
               child: Container(
-                width: 52,
-                height: 52,
+                width: 54,
+                height: 54,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.nodeBg,
+                  gradient: LinearGradient(
+                    colors: [
+                      themeColor.withValues(alpha: 0.25),
+                      const Color(0xFF17223B),
+                    ],
+                  ),
                   border: Border.all(color: themeColor, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: themeColor.withValues(alpha: 0.25),
-                      blurRadius: 10,
+                      color: themeColor.withValues(alpha: 0.3),
+                      blurRadius: 12,
                     ),
                   ],
                 ),
                 child: Text(
                   letter,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 21,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                   ),

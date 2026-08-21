@@ -17,6 +17,7 @@ import 'widgets/missing_letter_board.dart';
 import 'widgets/mode_headers/listen_spell_header.dart';
 import 'widgets/mode_headers/memory_header.dart';
 import 'widgets/mode_headers/timer_bar.dart';
+import 'widgets/pattern_drag_wheel.dart';
 import 'widgets/pattern_painter.dart';
 import 'widgets/word_slots.dart';
 
@@ -370,72 +371,19 @@ class _GameScreenState extends State<GameScreen>
                             themeColor: themeColor,
                             onLetterSelected: _controller.fillMissingLetter,
                           )
-                        : LayoutBuilder(
-                            builder: (_, constraints) {
-                              final areaWidth = constraints.maxWidth;
-                              final areaHeight = constraints.maxHeight;
-                              const nodeRadius = 27.0;
-
-                              return Stack(
-                                children: [
-                                  Positioned.fill(
-                                    child: CustomPaint(
-                                      painter: PatternPainter(
-                                        nodes: _controller.nodes,
-                                        selectedIndices:
-                                            _controller.selectedIndices,
-                                        renderArea: Size(areaWidth, areaHeight),
-                                        lineColor: themeColor,
-                                        isPatternClosed:
-                                            _controller.isCompleted,
-                                      ),
-                                    ),
-                                  ),
-                                  ...List.generate(_controller.nodes.length,
-                                      (index) {
-                                    final node = _controller.nodes[index];
-                                    final isSelected =
-                                        _controller.isSelected(index);
-                                    final leftPos =
-                                        (node.position.dx * areaWidth -
-                                                nodeRadius)
-                                            .clamp(4.0,
-                                                areaWidth - nodeRadius * 2 - 4);
-                                    final topPos = (node.position.dy *
-                                                areaHeight -
-                                            nodeRadius)
-                                        .clamp(4.0,
-                                            areaHeight - nodeRadius * 2 - 4);
-
-                                    final isHiddenInMemory =
-                                        widget.challenge.mode ==
-                                                ChallengeMode.memory &&
-                                            !_controller.isMemoryRevealed &&
-                                            !isSelected;
-
-                                    return AnimatedPositioned(
-                                      duration:
-                                          const Duration(milliseconds: 420),
-                                      curve: Curves.easeOutBack,
-                                      left: leftPos,
-                                      top: topPos,
-                                      child: AnimatedLetterNode(
-                                        letter: isHiddenInMemory
-                                            ? '?'
-                                            : node.letter,
-                                        isSelected: isSelected,
-                                        themeColor: themeColor,
-                                        radius: nodeRadius,
-                                        onTap: () =>
-                                            _controller.selectLetter(index),
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              );
-                            },
+                        : PatternDragWheel(
+                            nodes: _controller.nodes,
+                            selectedIndices: _controller.selectedIndices,
+                            themeColor: themeColor,
+                            isCompleted: _controller.isCompleted,
+                            isMemoryMode:
+                                widget.challenge.mode == ChallengeMode.memory,
+                            isMemoryRevealed: _controller.isMemoryRevealed,
+                            onNodeSelected: (index) =>
+                                _controller.selectLetter(index),
                           ),
                   ),
+
 
                   // --- Action Buttons ---
                   GameActionButtons(

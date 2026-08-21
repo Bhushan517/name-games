@@ -8,6 +8,7 @@ class PatternPainter extends CustomPainter {
     required this.renderArea,
     required this.lineColor,
     required this.isPatternClosed,
+    this.dragPosition,
   });
 
   final List<LetterNode> nodes;
@@ -15,6 +16,7 @@ class PatternPainter extends CustomPainter {
   final Size renderArea;
   final Color lineColor;
   final bool isPatternClosed;
+  final Offset? dragPosition;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -32,7 +34,9 @@ class PatternPainter extends CustomPainter {
     for (final point in points.skip(1)) {
       path.lineTo(point.dx, point.dy);
     }
-    if (isPatternClosed) {
+    if (dragPosition != null && !isPatternClosed) {
+      path.lineTo(dragPosition!.dx, dragPosition!.dy);
+    } else if (isPatternClosed) {
       path.close();
     }
 
@@ -40,8 +44,8 @@ class PatternPainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..color = lineColor.withValues(alpha: 0.2)
-        ..strokeWidth = 12
+        ..color = lineColor.withValues(alpha: 0.35)
+        ..strokeWidth = 14
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
@@ -52,11 +56,25 @@ class PatternPainter extends CustomPainter {
       path,
       Paint()
         ..color = lineColor
-        ..strokeWidth = 3.5
+        ..strokeWidth = 4.5
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
+
+    // Draw active glowing pointer dot at drag position
+    if (dragPosition != null && !isPatternClosed) {
+      canvas.drawCircle(
+        dragPosition!,
+        9.0,
+        Paint()..color = lineColor.withValues(alpha: 0.4),
+      );
+      canvas.drawCircle(
+        dragPosition!,
+        4.5,
+        Paint()..color = Colors.white,
+      );
+    }
   }
 
   @override
@@ -66,6 +84,8 @@ class PatternPainter extends CustomPainter {
     final newValidCount = selectedIndices.where((e) => e != null).length;
     return oldValidCount != newValidCount ||
         oldDelegate.isPatternClosed != isPatternClosed ||
-        oldDelegate.nodes != nodes;
+        oldDelegate.nodes != nodes ||
+        oldDelegate.dragPosition != dragPosition;
   }
 }
+

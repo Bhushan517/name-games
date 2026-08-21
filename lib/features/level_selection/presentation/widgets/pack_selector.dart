@@ -15,7 +15,7 @@ class PackSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 42,
+      height: 46,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -29,28 +29,56 @@ class PackSelector extends StatelessWidget {
             padding: const EdgeInsets.only(right: 8),
             child: InkWell(
               onTap: AudioService.withSound(() => onPackSelected(index)),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                duration: const Duration(milliseconds: 220),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.cyan.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: isSelected
+                      ? const LinearGradient(
+                          colors: [
+                            AppColors.cyan,
+                            AppColors.purple,
+                          ],
+                        )
+                      : null,
+                  color: isSelected ? null : const Color(0x1F16223D),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected ? AppColors.cyan : Colors.white12,
+                    color: isSelected
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.12),
                     width: isSelected ? 1.5 : 1.0,
                   ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.cyan.withValues(alpha: 0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
-                child: Text(
-                  'Pack ${index + 1} ($startLevel–$endLevel)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                    color: isSelected ? AppColors.cyan : Colors.white70,
-                  ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected ? Icons.stars_rounded : Icons.folder_open_rounded,
+                      size: 16,
+                      color: isSelected ? Colors.white : Colors.white60,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Pack ${index + 1} ($startLevel–$endLevel)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                        color: isSelected ? Colors.white : Colors.white70,
+                      ),
+                    ),
+
+                  ],
                 ),
               ),
             ),
